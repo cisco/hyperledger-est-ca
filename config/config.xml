@@ -1,0 +1,192 @@
+# Copyright (c) 2018 Cisco and/or its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<root>
+	<debug>false</debug>
+	<crlsizelimit>512000</crlsizelimit>
+	<crypto>
+		<encryption>aes256</encryption>
+		<mode>gcm</mode>
+		<hash>SHA2</hash>
+		<type>sw</type>
+	</crypto>
+	<admin>
+		<ip>10.10.10.10</ip>
+		<port>7021</port>
+	</admin>
+	<est>
+		<auth_method>http-basic-auth</auth_method>
+		<ip>10.10.10.10</ip>
+		<port>443</port>
+		<tls>
+			<cert>/etc/est-ca/tls-cert.pem</cert>
+			<key>/etc/est-ca/tls-key.pem</key>
+			<truststore>/etc/est-ca/truststore/trust.pem</truststore>
+		</tls>
+	</est>
+	<db>
+		<type>SQLite</type>
+		<datastore>/etc/est-ca/cisco-ca-server.db</datastore>
+		<url>www.sql-server.com</url>
+		<dbusername>root</dbusername>
+		<dbpassword>cisco123</dbpassword>
+		<tls>
+			<enabled>false</enabled>
+			<clientcert>/etc/db-client-cert.pem</clientcert>
+			<clientkey>/etc/db-client-key.pem</clientkey>
+			<servercert>/etc/db-server-cert.pem</servercert>
+		</tls>
+	</db>
+	<ldap>
+		<enabled>false</enabled>
+		<url>host1.cisco.com</url>
+		<tls>
+			<server_certs>
+				<certfile>/etc/ldap-server-cert.pem</certfile>
+			</server_certs>
+			<client>
+				<certfile>/etc/ldap-client-cert.pem</certfile>
+				<keyfile>/etc/ldap-client-key.pem</keyfile>
+			</client>
+		</tls>
+	</ldap>
+	<caprofiles>
+		<default>gotham</default>
+		<profiles>
+			<name>gotham</name>
+			<validity>
+				<period>365</period>
+				<unit>days</unit>
+			</validity>
+			<attributes>
+				<C>USA</C>
+				<CN>BATMAN</CN>
+				<O>WAYNE ENTERPRISES</O>
+				<OU>CRIMELABS</OU>
+			</attributes>
+			<basic_contraints>
+				<isca>true</isca>
+				<maxpathlength>0</maxpathlength>
+			</basic_contraints>
+		</profiles>
+		<profiles>
+			<name>themyscera</name>
+			<validity>
+				<period>321</period>
+				<unit>days</unit>
+			</validity>
+			<attributes>
+				<C>GREECE</C>
+				<CN>WONDERWOMAN</CN>
+				<O>SELF</O>
+				<OU>CRIME</OU>
+			</attributes>
+			<basic_contraints>
+				<isca>true</isca>
+				<maxpathlength>0</maxpathlength>
+			</basic_contraints>
+		</profiles>
+	</caprofiles>
+	<ca>
+		<default>ca1</default>
+		<ca_list>
+			<name>ca1</name>
+			<mode>ca</mode>
+			<cert_path>/etc/bin/cert.pem</cert_path>
+			<key_path>/etc/bin/key.pem</key_path>
+			<chain_path>/etc/bin/chain.pem</chain_path>
+			<crl_path>/etc/bin/crl</crl_path>
+			<validity>
+				<period>365</period>
+				<unit>days</unit>
+			</validity>
+			<csr>
+				<pathlength>0</pathlength>
+				<subject_alt_name>
+					<IP>192.168.1.1</IP>
+					<host>www.ca1.cisco.com</host>
+				</subject_alt_name>
+				<subject_name>
+					<C>India</C>
+					<CN>batman-bin-superman</CN>
+					<O>Gotham</O>
+					<OU>nighttime-crimefighting</OU>
+					<ST>Karnataka</ST>
+				</subject_name>
+			</csr>
+			<key>
+				<length>512</length>
+				<type>ecdsa</type>
+			</key>
+			<signature_algorithm>ecdsa-with-SHA256</signature_algorithm>
+			<parent_ca>
+				<parenturl>cisco-external-ca.cisco.com</parenturl>
+				<authmode>http-basic-auth</authmode>
+				<cafingerprint>6783283723978928739283729382739287</cafingerprint>
+				<enrollment_id>ca1-cisco-subca</enrollment_id>
+				<password>cisco123</password>
+				<tls>
+					<cert>/etc/est-ca/tls-cert.pem</cert>
+					<key>/etc/est-ca/tls-key.pem</key>
+					<truststore>/etc/est-ca/truststore/trust.pem</truststore>
+				</tls>
+			</parent_ca>
+		</ca_list>
+		<ca_list>
+			<name>ca2</name>
+			<mode>subca</mode>
+			<cert_path>/etc/bin/cert.pem</cert_path>
+			<key_path>/etc/bin/key.pem</key_path>
+			<chain_path>/etc/bin/chain.pem</chain_path>
+			<crl_path>/etc/bin/crl</crl_path>
+			<validity>
+				<period>365</period>
+				<unit>days</unit>
+			</validity>
+			<csr>
+				<pathlength>0</pathlength>
+				<subject_alt_name>
+					<IP>192.168.1.1</IP>
+					<host>www.ca2.cisco.com</host>
+				</subject_alt_name>
+				<subject_name>
+					<C>India</C>
+					<CN>batman-bin-superman</CN>
+					<O>Gotham</O>
+					<OU>nighttime-crimefighting</OU>
+					<ST>Karnataka</ST>
+				</subject_name>
+			</csr>
+			<key>
+				<length>512</length>
+				<type>ecdsa</type>
+			</key>
+			<signature_algorithm>ecdsa-with-SHA256</signature_algorithm>
+			<parent_ca>
+				<parenturl>cisco-external-ca.cisco.com</parenturl>
+				<authmode>http-basic-auth</authmode>
+				<cafingerprint>6783283723978928739283729382739287</cafingerprint>
+				<enrollment_id>ca1-cisco-subca</enrollment_id>
+				<password>cisco123</password>
+				<tls>
+					<cert>/etc/est-ca/tls-cert.pem</cert>
+					<key>/etc/est-ca/tls-key.pem</key>
+					<truststore>/etc/est-ca/truststore/trust.pem</truststore>
+				</tls>
+			</parent_ca>
+		</ca_list>
+	</ca>
+</root>

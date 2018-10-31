@@ -1,0 +1,14 @@
+## TODO
+
+* Support for Certificate authentication & HTTP Basic authentication
+
+* CA certificate rollover
+
+* Other database options for EST-CA
+
+* Certificate revocation workflow(OCSP/CRL)
+
+* LDAP Support
+
+* Support for HSM
+

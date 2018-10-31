@@ -1,0 +1,151 @@
+ # Copyright (c) 2018 Cisco and/or its affiliates.
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License");
+ # you may not use this file except in compliance with the License.
+ # You may obtain a copy of the License at
+ #
+ #     http://www.apache.org/licenses/LICENSE-2.0
+ #
+ # Unless required by applicable law or agreed to in writing, software
+ # distributed under the License is distributed on an "AS IS" BASIS,
+ # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+ #
+
+debug: 'false'
+crlsizelimit: 512000
+crypto:
+  encryption: 'aes256'
+  mode: 'gcm'
+  hash: 'SHA2'
+  type: 'sw'
+admin:
+  ip: '10.10.10.10'
+  port: 7021
+est:
+  auth_method: 'http-basic-auth'
+  ip: '10.10.10.10'
+  port: 443
+  tls:
+    cert: '/etc/est-ca/tls-cert.pem'
+    key: '/etc/est-ca/tls-key.pem'
+    truststore: '/etc/est-ca/truststore/trust.pem'
+db:
+  type: 'SQLite'
+  datastore: 'cisco-ca-server.db'
+  url: 'www.sql-server.com'
+  dbusername: 'root'
+  dbpassword: 'cisco123'
+  tls:
+    enabled: 'false'
+    clientcert: '/etc/db-client-cert.pem'
+    clientkey: '/etc/db-client-key.pem'
+    servercert: '/etc/db-server-cert.pem'
+ldap:
+  enabled: 'false'
+  url: 'host1.cisco.com'
+  tls:
+    server_certs:
+      - certfile: '/etc/ldap-server-cert.pem'
+    client:
+      certfile: '/etc/ldap-client-cert.pem'
+      keyfile: '/etc/ldap-client-key.pem'
+caprofiles:
+  default: 'gotham'
+  profiles:
+    - name: 'gotham'
+      validity:
+        period: 365
+        unit: 'days'
+      attributes:
+        C: 'USA'
+        CN: 'BATMAN'
+        O: 'WAYNE ENTERPRISES'
+        OU: 'CRIMELABS'
+      basic_contraints:
+        is_ca: 'true'
+        maxpathlength: 0
+    - name: 'themyscera'
+      validity:
+        period: 321
+        unit: 'days'
+      attributes:
+        C: 'GREECE'
+        CN: 'WONDERWOMAN'
+        O: 'SELF'
+        OU: 'CRIME'
+      basic_contraints:
+        is_ca: 'true'
+        maxpathlength: 0
+ca:
+  default: 'ca1'
+  ca_list:
+    - name: 'ca1'
+      mode: 'ca'
+      cert_path: '/etc/bin/cert.pem'
+      key_path: '/etc/bin/key.pem'
+      chain_path: '/etc/bin/chain.pem'
+      crl_path: '/etc/bin/crl'
+      validity:
+        period: 365
+        unit: 'days'
+      csr:
+        pathlength: 0
+        subject_alt_name:
+          IP: '192.168.1.1'
+          host: 'www.ca1.cisco.com'
+        subject_name:
+          C: 'India'
+          CN: 'batman-bin-superman'
+          O: 'Gotham'
+          OU: 'nighttime-crimefighting'
+          ST: 'Karnataka'
+      key:
+        length: 512
+        type: 'ecdsa'
+      signature_algorithm: 'ecdsa-with-SHA256'
+      parent_ca:
+        parenturl: 'cisco-external-ca.cisco.com'
+        authmode: 'http-basic-auth'
+        cafingerprint: '6783283723978928739283729382739287'
+        enrollment_id: 'ca1-cisco-subca'
+        password: 'cisco123'
+        tls:
+          cert: '/etc/est-ca/tls-cert.pem'
+          key: '/etc/est-ca/tls-key.pem'
+          truststore: '/etc/est-ca/truststore/trust.pem'
+    - name: 'ca2'
+      mode: 'subca'
+      cert_path: '/etc/bin/cert.pem'
+      key_path: '/etc/bin/key.pem'
+      chain_path: '/etc/bin/chain.pem'
+      crl_path: '/etc/bin/crl'
+      validity:
+        period: 365
+        unit: 'days'
+      csr:
+        pathlength: 0
+        subject_alt_name:
+          IP: '192.168.1.1'
+          host: 'www.ca2.cisco.com'
+        subject_name:
+          C: 'India'
+          CN: 'batman-bin-superman'
+          O: 'Gotham'
+          OU: 'nighttime-crimefighting'
+          ST: 'Karnataka'
+      key:
+        length: 512
+        type: 'ecdsa'
+      signature_algorithm: 'ecdsa-with-SHA256'
+      parent_ca:
+        parenturl: 'cisco-external-ca.cisco.com'
+        authmode: 'http-basic-auth'
+        cafingerprint: '6783283723978928739283729382739287'
+        enrollment_id: 'ca1-cisco-subca'
+        password: 'cisco123'
+        tls:
+          cert: '/etc/est-ca/tls-cert.pem'
+          key: '/etc/est-ca/tls-key.pem'
+          truststore: '/etc/est-ca/truststore/trust.pem'

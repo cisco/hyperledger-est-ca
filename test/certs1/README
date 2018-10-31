@@ -1,0 +1,24 @@
+ECDSA:
+Generate EC Key for CA:
+openssl ecparam -name secp256k1 -genkey -param_enc explicit -out ca-private-key.pem
+
+Generate CA Cert:
+openssl req -new -x509 -key ca-private-key.pem -out ca-public-cert.pem -days 730
+
+Generate Keys for the Client ID Cert:
+openssl ecparam -name secp256k1 -genkey -param_enc explicit -out c1-private-key.pem
+
+Generate CSR for the Client C1:
+openssl req -new -sha256 -key c1-private-key.pem -out c1_csr.csr
+
+Generate the Certificate post CA signing:
+openssl x509 -req -in c1_csr.csr -CA ca-public-cert.pem -CAkey ca-private-key.pem -CAcreateserial -out c1_cert.pem -days 365 -sha256
+
+To View Certificate:
+openssl x509 -in id1_cert.pem -text -noout
+
+To View Key:
+openssl ecparam -in id1-private-key.pem -text -noout
+
+Issue Cert:
+openssl x509 -req -in id1_csr.csr -CA ca-public-cert.pem -CAkey ca-private-key.pem -CAcreateserial -out id1_cert.crt -days 365 -sha256

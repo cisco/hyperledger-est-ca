@@ -1,2 +1,37 @@
-# hyperledger-est-ca
-EST CA for Hyperledger Fabric
+verview
+
+[Hyperledger Fabric](https://github.com/hyperledger/fabric) relies on X.509 Digital Certificates for identity management and PKI as a foundation for secure communication between blockchain nodes. However, the generation of the certificates requires administrator intervention either in the form of using "cryptogen" tool(for testing) or other proprietary methods of provisioning certificates to nodes.
+
+An alternative standards based approach can be to use Enrollment over Secure Transport(EST) Certificate Authority. Hyperledger Fabric nodes can enroll themselves with the Org's CA either on bootup or on demand. Other features of EST such as CA rollover, automated certificate re-enrollment/renewal, enforcement of Proof of Possession(PoP) make it an attractive choice.
+
+# Status
+
+The EST-CA implementation is in alpha state.
+
+# Prerequisites for building
+
+EST-CA has a dependency on openssl-1.0.2g and libssl-dev-1.0.2g libraries(golang's TLS package does not support TLS/PSK). The required Go packages are gopkg.in/yaml.v1 and github.com/mattn/go-sqlite4.
+
+# Building & Running
+
+To build and run EST server -
+
+/opt/gopath/src/est $ export GOPATH=/opt/gopath/
+/opt/gopath/src/est $ go build -o est_server  est_server_main.go
+/opt/gopath/src/est $ ./est_server $GOPATH/config/config.yaml
+
+EST Clients must use the APIs from caclient & chttp package.
+
+# Testing
+
+# Known limitations
+
+* Compliance with [RFC 7030](https://tools.ietf.org/html/rfc7030)
+* Support for Chunked CSR.
+* See TODO file
+
+# License
+
+See LICENSE file.
+
+
