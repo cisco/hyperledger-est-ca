@@ -16,18 +16,19 @@
 package chttp
 
 import (
+	"io"
+	"fmt"
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"errors"
-	"est/cca"
-	"est/cdb"
-	"est/config"
-	"fmt"
-	"io"
+	"strings"
 	"io/ioutil"
 	"net/http"
-	"strings"
+	"encoding/json"
+	"github.com/golang/glog"
+	"github.com/cisco/hyperledger-est-ca/cca"
+	"github.com/cisco/hyperledger-est-ca/cdb"
+	"github.com/cisco/hyperledger-est-ca/config"
 )
 
 type Ca struct {
@@ -56,10 +57,10 @@ type CreateEnrolProf struct {
 	CaProfile    string `json:"caProfile"`
 	CaName       string `json:"caName"`
 	Role         string `json:"role"`
-	/*	Cn           string `json:"cn"`
-		Ou           string `json:"ou"`
-		C            string `json:"c"`
-		O            string `json:"o"`  */
+	//Cn           string `json:"cn"`
+	//Ou           string `json:"ou"`
+	//C            string `json:"c"`
+	//O            string `json:"o"`
 }
 
 type ClosingBuffer struct {
@@ -74,7 +75,7 @@ func CreateHTTPResponse(statuscode int, req *http.Request, ctype, body string) [
 	var resp http.Response
 	var rc io.ReadCloser
 
-	fmt.Printf("\nCreating HTTP response with body len: %d", len(body))
+	glog.Infof("Creating HTTP response with body len: %d", len(body))
 
 	resp.Status = http.StatusText(statuscode)
 	resp.StatusCode = statuscode
@@ -96,7 +97,7 @@ func CreateHTTPResponse(statuscode int, req *http.Request, ctype, body string) [
 	resp.Write(buffer)
 
 	newString := buffer.String()
-	fmt.Printf("\nResponse is %s", newString)
+	glog.Infof("Response is %s", newString)
 	return []byte(newString)
 
 }
@@ -126,22 +127,23 @@ func HttpHandleESTRequest(data []byte, id string) []byte {
 	reader := bufio.NewReader(readbuffer)
 	req, err := http.ReadRequest(reader)
 	if err != nil {
-		fmt.Printf("\nError %s while processing request", err)
+		glog.Errorf("Error %s while processing request", err.Error())
 		return []byte("")
 	}
 
 	resp := []byte("")
 	switch reqPath := req.URL.Path; reqPath {
 	case "/simpleenroll":
-		fmt.Printf("\nEST Simple Enroll Request")
+		glog.Infof("EST Simple Enroll Request")
 		resp = SimpleEnrollReqHandler(req, id)
 	case "/getcacert":
-		fmt.Printf("\nEST Get CA Cert Request")
+		glog.Infof("EST Get CA Cert Request")
 		resp = GetCACertReqHandler(req, id)
 	default:
-		fmt.Println("Invalid Request Found %s", reqPath)
+		glog.Errorf("Invalid Request Found %s", reqPath)
 		resp = HandleInvalidRequest(req)
 	}
+
 	return resp
 }
 
@@ -150,21 +152,22 @@ func HttpHandleAdminRequest(data []byte) []byte {
 	reader := bufio.NewReader(readbuffer)
 	req, err := http.ReadRequest(reader)
 	if err != nil {
-		fmt.Printf("\nError %s while processing request", err)
+		glog.Errorf("Error %s while processing request", err.Error())
 		return []byte("")
 	}
 	resp := []byte("")
+
 	switch reqPath := req.URL.Path; reqPath {
 	case "/getfingerprint":
 		resp = GetFingerprintReqHandler(req)
 	case "/revokecertificate":
-		fmt.Printf("\nReceived RevokeCert Request.. Not Supported")
+		glog.Infof("\nReceived RevokeCert Request.. Not Supported")
 		resp = HandleInvalidRequest(req)
 	case "/createenrollprofile":
-		fmt.Println("Create Enrollment Profile")
+		glog.Info("Create Enrollment Profile")
 		resp = CreateEnrolmentProfReqHandler(req)
 	default:
-		fmt.Println("Invalid AdminRequest Found %s", reqPath)
+		glog.Errorf("Invalid AdminRequest Found %s", reqPath)
 		resp = HandleInvalidRequest(req)
 	}
 
@@ -172,37 +175,41 @@ func HttpHandleAdminRequest(data []byte) []byte {
 }
 
 func SimpleEnrollReqHandler(req *http.Request, id string) []byte {
-	/* validate the header */
+	// validate the header 
 	if req.Method != http.MethodPost {
-		fmt.Printf("\nInvalid Request Type for Simple Enroll")
+		glog.Errorf("Invalid Request Type for Simple Enroll")
 		return HandleInvalidRequest(req)
 	}
-	/* validate content type */
+
+	// validate content type 
 	if req.Header.Get("Content-Type") != "application/pkcs10" {
-		fmt.Printf("\nInvalid Content Type %s", req.Header.Get("Content-Type"))
+		glog.Errorf("Invalid Content Type %s", req.Header.Get("Content-Type"))
 		return HandleInvalidRequest(req)
 	}
+
 	body, _ := ioutil.ReadAll(req.Body)
 	ecert, err := cca.HandleSimpleEnrollRequest(id, string(body))
 	if err != nil {
-		fmt.Printf("\nError issuing Certificate [%s]", err)
+		glog.Errorf("Error issuing Certificate [%s]", err.Error())
 		return HandleInvalidRequest(req)
 	}
+
 	return CreateHTTPResponse(200, req, "application/pkcs10", string(ecert))
 }
 
 func GetCACertReqHandler(req *http.Request, id string) []byte {
-	/* validate the header */
+	// validate the header 
 	if req.Method != http.MethodGet {
-		fmt.Printf("\nInvalid Request Type for Simple Enroll")
+		glog.Errorf("Invalid Request Type for Simple Enroll")
 		return HandleInvalidRequest(req)
 	}
 
 	cacert, err := cca.HandleGetCACert(id)
 	if err != nil {
-		fmt.Printf("\nError getting CA cert [%s]", err)
+		glog.Errorf("Error getting CA cert [%s]", err.Error())
 		return HandleInvalidRequest(req)
 	}
+
 	return CreateHTTPResponse(200, req, "application/pkcs10", string(cacert))
 }
 
@@ -210,7 +217,7 @@ func GetFingerprintReqHandler(r *http.Request) []byte {
 	var ca Ca
 
 	if r.Method != http.MethodPost {
-		fmt.Printf("\nInvalid Request Type for Simple Enroll")
+		glog.Errorf("Invalid Request Type for Simple Enroll")
 		return HandleInvalidRequest(r)
 	}
 
@@ -218,56 +225,61 @@ func GetFingerprintReqHandler(r *http.Request) []byte {
 	fingerprintRes := FingerprintRes{}
 	err := json.Unmarshal(body, &ca)
 	if err != nil {
-		fmt.Printf("\nCould not unmarshal the JSON request")
+		glog.Errorf("Could not unmarshal the JSON request")
 		return HandleInvalidRequest(r)
 	}
 
-	/* If CA Name is nil then get default CA */
+	// If CA Name is nil then get default CA 
 	if ca.Caname == "" {
 		ca.Caname = config.GetDefaultCA()
 	}
 
-	/* database retrieval workflow */
+	// database retrieval workflow 
 	db := cdb.InitDB(config.GetDBInfo().Dbfile)
 	item, count := cdb.SearchCaItem(db, ca.Caname)
 	if count == 0 {
 		return CreateHTTPResponse(200, r, "application/json", GetFailureJson("Invalid Name"))
 	}
+
 	fingerprintRes.Fingerprint = item.Fingerprint
 	fingerprintRes.FpAlgo = item.FpAlgo
 	fingerprintResJson, err := json.Marshal(fingerprintRes)
 	if err != nil {
 		return CreateHTTPResponse(200, r, "application/json", GetFailureJson("Sys failure"))
 	}
+
 	resp := CreateHTTPResponse(200, r, "application/json", string(fingerprintResJson))
+
 	return resp
 }
 
-/* TODO: This api is not being used yet.. will be supported */
+// TODO: This api is not being used yet.. will be supported 
 func RevokeCertificateReqHandler(w http.ResponseWriter, r *http.Request) {
 	body, _ := ioutil.ReadAll(r.Body)
 	var revokeCert RevokeCert
 	err := json.Unmarshal(body, &revokeCert)
 	if err != nil {
-		fmt.Printf("\nInvalid JSON")
+		glog.Errorf("Invalid JSON")
 	}
-	fmt.Println(revokeCert.SerialNo)
+
+	glog.Info(revokeCert.SerialNo)
 	io.WriteString(w, "success")
 }
 
 func CreateEnrolmentProfReqHandler(r *http.Request) []byte {
 	var createEnrolProf CreateEnrolProf
 	if r.Method != http.MethodPost {
-		fmt.Printf("\nInvalid Request Type for Simple Enroll")
+		glog.Errorf("Invalid Request Type for Simple Enroll")
 		return HandleInvalidRequest(r)
 	}
+
 	body, _ := ioutil.ReadAll(r.Body)
 	err := json.Unmarshal(body, &createEnrolProf)
-
 	if err != nil {
-		fmt.Printf("\nCould not get the Body for the Enrollment Request")
+		glog.Errorf("Could not get the Body for the Enrollment Request")
 		return HandleInvalidRequest(r)
 	}
+
 	db := cdb.InitDB(config.GetDBInfo().Dbfile)
 	item := cdb.EnrollTable{createEnrolProf.EnrollId,
 		createEnrolProf.EnrollSecret, "", 0,
@@ -276,22 +288,23 @@ func CreateEnrolmentProfReqHandler(r *http.Request) []byte {
 	if count != 0 {
 		return CreateHTTPResponse(200, r, "application/json", GetFailureJson("Profile Already Exists"))
 	}
+
 	cdb.StoreEnrollItem(db, item)
 	resp := CreateHTTPResponse(200, r, "application/json", GetSuccessJson())
+
 	return resp
 }
 
-/*
- * HTTP Client APIs
- */
+// HTTP Client APIs
 func byteRequest(req http.Request) []byte {
 
 	buf := new(bytes.Buffer)
 	err := req.Write(buf)
 	if err != nil {
-		fmt.Printf("\nError while converting to buff %s", err)
+		glog.Errorf("Error while converting to buff %s", err)
 		return nil
 	}
+
 	newStr := buf.String()
 	fmt.Printf(newStr)
 	return []byte(newStr)
@@ -325,6 +338,7 @@ func GetCreateEnrolProfRequest(eid, esec, caprof, caname, role string) []byte {
 	req.Header.Add("Cache-control", "no-cache")
 	req.Header.Add("Content-type", "application/json")
 	sendByte := byteRequest(*req)
+
 	return sendByte
 }
 
@@ -335,6 +349,7 @@ func GetSimpleEnrollRequest(payload string) []byte {
 	req.Header.Add("Cache-Control", "no-cache")
 	req.Header.Add("Content-Type", "application/pkcs10")
 	sendByte := byteRequest(*req)
+
 	return sendByte
 }
 
@@ -354,19 +369,20 @@ func HandleGetFingerprintResponse(res []byte) (int, []byte, error) {
 	resp, _ := http.ReadResponse(reader, nil)
 	body, _ := ioutil.ReadAll(resp.Body)
 
-	/* Check if 200 OK? */
+	// Check if 200 OK? 
 	if resp.StatusCode != 200 {
-		fmt.Printf("\nFailure Response %s", resp.Status)
+		glog.Errorf("Failure Response %s", resp.Status)
 		return 0, nil, errors.New(resp.Status)
 	}
+
 	err := json.Unmarshal(body, &resjson)
 	if err != nil {
-		fmt.Printf("\nGet Fingerprint failed")
-		fmt.Printf("\n%s", body)
+		glog.Errorf("Get Fingerprint failed")
+		glog.Errorf("%s", body)
 		return 0, nil, errors.New("Negative response")
 	}
-	return resjson.FpAlgo, []byte(resjson.Fingerprint), nil
 
+	return resjson.FpAlgo, []byte(resjson.Fingerprint), nil
 }
 
 func HandleCreateEnrolProfResponse(res []byte) bool {
@@ -375,19 +391,23 @@ func HandleCreateEnrolProfResponse(res []byte) bool {
 	reader := bufio.NewReader(readbuffer)
 	resp, _ := http.ReadResponse(reader, nil)
 	body, _ := ioutil.ReadAll(resp.Body)
-	/* Check if 200 OK? */
+
+	// Check if 200 OK? 
 	if resp.StatusCode != 200 {
-		fmt.Printf("\nFailure Response %s", resp.Status)
+		glog.Errorf("Failure Response %s", resp.Status)
 		return false
 	}
+
 	err := json.Unmarshal(body, &resjson)
 	if err != nil {
-		fmt.Printf("\nInvalid Response")
+		glog.Errorf("Invalid Response")
 		return false
 	}
+
 	if resjson.Success == "Success" {
-		fmt.Printf("\n Create Enrollment Profile Successful")
+		glog.Infof("Create Enrollment Profile Successful")
 	}
+
 	return true
 }
 
@@ -396,18 +416,19 @@ func HandleSimpleEnrollResponse(res []byte) (string, error) {
 	reader := bufio.NewReader(readbuffer)
 	resp, _ := http.ReadResponse(reader, nil)
 	body, _ := ioutil.ReadAll(resp.Body)
-	/* Check if 200 OK? */
+
+	// Check if 200 OK? 
 	if resp.StatusCode != 200 {
-		fmt.Printf("\nFailure Response %s", resp.Status)
+		glog.Errorf("Failure Response %s", resp.Status)
 		return "", errors.New(resp.Status)
 	}
 
 	if resp.Header.Get("Content-Type") != "application/pkcs10" {
-		fmt.Printf("\nInvalid Content Type")
+		glog.Errorf("Invalid Content Type")
 		return "", errors.New("\nInvalid Content Type")
 	}
 
-	/* It was successful, so we have the body.. lets pem encode and return */
+	// It was successful, so we have the body.. lets pem encode and return 
 	return cca.GetCertPem([]byte(body)), nil
 }
 
@@ -416,16 +437,18 @@ func HandleGetCACertResponse(res []byte) (string, error) {
 	reader := bufio.NewReader(readbuffer)
 	resp, _ := http.ReadResponse(reader, nil)
 	body, _ := ioutil.ReadAll(resp.Body)
-	/* Check if 200 OK? */
+
+	// Check if 200 OK? 
 	if resp.StatusCode != 200 {
-		fmt.Printf("\nFailure Response %s", resp.Status)
+		glog.Errorf("Failure Response %s", resp.Status)
 		return "", errors.New(resp.Status)
 	}
+
 	if resp.Header.Get("Content-Type") != "application/pkcs10" {
-		fmt.Printf("\nInvalid Content Type")
+		glog.Errorf("Invalid Content Type")
 		return "", errors.New("\nInvalid Content Type")
 	}
 
-	/* It was successful, so we have the body.. lets pem encode and return */
+	// It was successful, so we have the body.. lets pem encode and return 
 	return cca.GetCertPem([]byte(body)), nil
 }

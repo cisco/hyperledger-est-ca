@@ -64,9 +64,8 @@
 package cdb
 
 import (
-	"database/sql"
 	"fmt"
-
+	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 )
 

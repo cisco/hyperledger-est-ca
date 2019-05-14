@@ -28,17 +28,18 @@ package caclient
  */
 
 import (
-	"cca"
-	"chttp"
-	"config"
-	"cssl"
 	"errors"
 	"fmt"
 	"net"
 	"syscall"
+	"github.com/golang/glog"
+	"github.com/cisco/hyperledger-est-ca/cca"
+	"github.com/cisco/hyperledger-est-ca/chttp"
+	"github.com/cisco/hyperledger-est-ca/config"
+	"github.com/cisco/hyperledger-est-ca/cssl"
 )
 
-/* Taken from the x509 package in go lang DO NOT CHANGE */
+// Taken from the x509 package in go lang DO NOT CHANGE 
 const (
 	CEST_SIGNATURE_INVALID      = iota
 	CEST_SIGNATURE_ECDSA_SHA1   = 9
@@ -77,41 +78,49 @@ func invalidateidpass() {
 func getconnectedsocket(ip string, port int) int {
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0)
 	if err != nil {
-		fmt.Printf("\nError Creating Socket [%s]", err)
+		glog.Errorf("Error Creating Socket [%s]", err.Error())
 		return -1
 	}
+
 	addr := syscall.SockaddrInet4{Port: port}
 	copy(addr.Addr[:], net.ParseIP(ip).To4())
 	err = syscall.Connect(fd, &addr)
 	if err != nil {
-		fmt.Printf("\nCould not connect to %s:%d [%s]", ip, port, err)
+		glog.Errorf("Could not connect to %s:%d [%s]", ip, port, err.Error()
 		return -1
 	}
-	fmt.Printf("\nTCP connection established with %s:%d", ip, port)
+
+	glog.Infof("TCP connection established with %s:%d", ip, port)
+
 	return fd
 }
 
 func getconnectedcssl(fd int, id string) *cssl.CSSL {
 	cSSL := cssl.CSSLGetNewClient(fd)
 	if cSSL == nil {
-		fmt.Printf("\nError Creating CSSL object")
+		glog.Errorf("Error Creating CSSL object")
 		return nil
 	}
-	/* Let us configure the cipher suite */
+
+	// Let us configure the cipher suite 
 	if !cssl.CSSLSetCipher(cSSL, "PSK-AES256-CBC-SHA") {
-		fmt.Printf("\nCould not set psk cipher suite")
+		glog.Errorf("Could not set psk cipher suite")
 		return nil
 	}
-	/* For the client, set the ID as well */
+
+	// For the client, set the ID as well 
 	cssl.CSSLSetPSKClientID(cSSL, id)
-	/* Connect to the server */
+
+	// Connect to the server 
 	retval := cssl.CSSLClientConnect(cSSL)
 	if retval != cssl.CSSL_APP_ERR_EOK {
-		fmt.Printf("\nCould not complete SSL Handshake")
-		fmt.Printf("\nCSSL returned Error %d")
+		glog.Errorf("Could not complete SSL Handshake")
+		glog.Errorf("CSSL returned Error %d")
 		return nil
 	}
-	fmt.Printf("\nSSL Handshake successful with the server")
+
+	glog.Infof("SSL Handshake successful with the server")
+
 	return cSSL
 }
 
@@ -121,200 +130,236 @@ func InitCAClient() {
 	cssl.CSSLSetPSKCb(getidpass)
 }
 
-/* Admin APIs */
+// Admin APIs 
 func GetCaFingerprint(ip string, port int, caname, aid, apk string) (string, int, error) {
-	/* First Get the getcafingerprint request */
+	// First Get the getcafingerprint request 
 	httpReq := chttp.GetFingerprintRequest(caname)
-	/* Connect to Server */
+
+	// Connect to Server 
 	cfd := getconnectedsocket(ip, port)
 	if cfd < 0 {
 		return "", -1, errors.New("TCP Connection Failed")
 	}
 	defer syscall.Close(cfd)
-	/* set ID PASS */
+
+	// set ID PASS 
 	setidpass(aid, apk)
 	defer invalidateidpass()
-	/* Do SSL Handshake */
+
+	// Do SSL Handshake 
 	cSSL := getconnectedcssl(cfd, aid)
 	if cSSL == nil {
 		return "", -1, errors.New("SSL Handshake Failed")
 	}
-	fmt.Printf("\nSending Req to the Server\n%s", string(httpReq))
-	/* Send the Request to the Server */
+	glog.Infof("Sending Req to the Server %s", string(httpReq))
+
+	// Send the Request to the Server 
 	retval := cssl.CSSLWrite(cSSL, httpReq, uint(len(httpReq)))
 	if retval != cssl.CSSL_APP_ERR_EOK {
-		fmt.Printf("\nCould not Send Request to Server [%d]", retval)
+		glog.Errorf("Could not Send Request to Server [%d]", retval)
 		cssl.CSSLDelete(cSSL)
 		return "", -1, errors.New("Req not Sent")
 	}
-	/* Wait for Response */
+
+	// Wait for Response 
 	read_bytes, rlen, rerr := cssl.CSSLReadN(cSSL, 2048)
 	if rerr != cssl.CSSL_APP_ERR_EOK {
-		fmt.Printf("\nGot Error while Reading Data from Server")
+		glog.Errorf("Got Error while Reading Data from Server")
 		cssl.CSSLDelete(cSSL)
 		return "", -1, errors.New("Error on Read")
 	}
-	fmt.Printf("\nReceived Response From Server [%d bytes]\n%s", rlen, string(read_bytes))
-	/* Handle Response */
+	glog.Infof("Received Response From Server [%d bytes] %s", rlen, string(read_bytes))
+
+	// Handle Response 
 	Algo, FP, Err := chttp.HandleGetFingerprintResponse(read_bytes)
 	if Err != nil {
-		fmt.Printf("\nError Handling Response %s", Err)
+		glog.Errorf("Error Handling Response %s", Err.Error())
 		cssl.CSSLDelete(cSSL)
 		return "", -1, Err
 	}
-	/* Clean up CSSL */
+
+	// Clean up CSSL 
 	cssl.CSSLDelete(cSSL)
-	/* we have the reponse */
-	fmt.Printf("\nGot FingerPrint and Algo:\n%d,%s", Algo, string(FP))
+
+	// we have the reponse 
+	glog.Infof("Got FingerPrint and Algo: %d,%s", Algo, string(FP))
+
 	return string(FP), Algo, nil
 }
 
 func CreateEnrollmentProfile(ip string, port int, aid, apk, eid, esecret,
 	caname, caprofile, role string) bool {
-	/* Lets get the Create EnrollProfile Request */
+	// Lets get the Create EnrollProfile Request 
 	httpReq := chttp.GetCreateEnrolProfRequest(eid, esecret, caprofile, caname, role)
-	/* Connect to Server */
+
+	// Connect to Server 
 	cfd := getconnectedsocket(ip, port)
 	if cfd < 0 {
 		return false
 	}
 	defer syscall.Close(cfd)
-	/* set ID PASS */
+
+	// set ID PASS 
 	setidpass(aid, apk)
 	defer invalidateidpass()
-	/* Do SSL Handshake */
+
+	// Do SSL Handshake 
 	cSSL := getconnectedcssl(cfd, aid)
 	if cSSL == nil {
 		return false
 	}
-	fmt.Printf("\nSending Req to the Server\n%s", string(httpReq))
-	/* Send the Request to the Server */
+	glog.Infof("Sending Req to the Server %s", string(httpReq))
+
+	// Send the Request to the Server 
 	retval := cssl.CSSLWrite(cSSL, httpReq, uint(len(httpReq)))
 	if retval != cssl.CSSL_APP_ERR_EOK {
-		fmt.Printf("\nCould not Send Request to Server [%d]", retval)
+		glog.Errorf("Could not Send Request to Server [%d]", retval)
 		cssl.CSSLDelete(cSSL)
 		return false
 	}
-	/* Wait for Response */
+
+	// Wait for Response 
 	read_bytes, rlen, rerr := cssl.CSSLReadN(cSSL, 2048)
 	if rerr != cssl.CSSL_APP_ERR_EOK {
-		fmt.Printf("\nGot Error while Reading Data from Server")
+		glog.Errorf("Got Error while Reading Data from Server")
 		cssl.CSSLDelete(cSSL)
 		return false
 	}
-	/* Clean up SSL */
+
+	// Clean up SSL 
 	cssl.CSSLDelete(cSSL)
-	fmt.Printf("\nReceived Response From Server [%d bytes]\n%s", rlen, string(read_bytes))
-	/* Handle Response */
+	glog.Infof("Received Response From Server [%d bytes] %s", rlen, string(read_bytes))
+
+	// Handle Response 
 	return chttp.HandleCreateEnrolProfResponse(read_bytes)
 }
 
 func RevokeCertificate() bool {
-	fmt.Printf("\nUnsupported Right now")
+	glog.Infof("Unsupported Right now")
 	return false
 }
 
-/* EST APIs */
+// EST APIs 
 func GetCACert(ip string, port int, eid, esec string) (string, error) {
-	/* Lets get the GetCACert Request */
+	// Lets get the GetCACert Request 
 	httpReq := chttp.GetGetCACertRequest()
-	/* Connect to Server */
+
+	// Connect to Server 
 	cfd := getconnectedsocket(ip, port)
 	if cfd < 0 {
 		return "", errors.New("TCP Error")
 	}
 	defer syscall.Close(cfd)
-	/* set ID PASS */
+
+	// set ID PASS 
 	setidpass(eid, esec)
 	defer invalidateidpass()
-	/* Do SSL Handshake */
+
+	// Do SSL Handshake 
 	cSSL := getconnectedcssl(cfd, eid)
 	if cSSL == nil {
 		return "", errors.New("SSL Error")
 	}
-	fmt.Printf("\nSending Req to the Server\n%s", string(httpReq))
-	/* Send the Request to the Server */
+	glog.Infof("Sending Req to the Server %s", string(httpReq))
+
+	// Send the Request to the Server 
 	retval := cssl.CSSLWrite(cSSL, httpReq, uint(len(httpReq)))
 	if retval != cssl.CSSL_APP_ERR_EOK {
-		fmt.Printf("\nCould not Send Request to Server [%d]", retval)
+		glog.Errorf("Could not Send Request to Server [%d]", retval)
 		cssl.CSSLDelete(cSSL)
 		return "", errors.New("Error Writing Data")
 	}
-	/* Wait for Response */
+
+	// Wait for Response 
 	read_bytes, rlen, rerr := cssl.CSSLReadN(cSSL, 2048)
 	if rerr != cssl.CSSL_APP_ERR_EOK {
-		fmt.Printf("\nGot Error while Reading Data from Server")
+		glog.Errorf("Got Error while Reading Data from Server")
 		cssl.CSSLDelete(cSSL)
 		return "", errors.New("Error Reading Data")
 	}
-	/* Clean up SSL */
+
+	// Clean up SSL 
 	cssl.CSSLDelete(cSSL)
-	fmt.Printf("\nReceived Response From Server [%d bytes]\n%s", rlen, string(read_bytes))
-	/* handle Response */
+	glog.Infof("Received Response From Server [%d bytes]\n%s", rlen, string(read_bytes))
+
+	// handle Response 
 	return chttp.HandleGetCACertResponse(read_bytes)
 }
 
 func GetIDCert(ip string, port int, eid, esec string, kcurve uint8, sigalgo uint, csr *config.CertAttributes) (string, string, error) {
-	/* Generate Key */
+	// Generate Key 
 	pkey, errKey := cca.GenerateECKey(kcurve)
 	if errKey != nil {
-		fmt.Printf("\nError Generating key [%s]", errKey)
+		glog.Errorf("Error Generating key [%s]", errKey.Error())
 		return "", "", errKey
 	}
-	fmt.Printf("\nKey Generated")
-	/* Create CSR */
+	glog.Infof("Key Generated")
+
+	// Create CSR 
 	csrDer, errCsr := cca.GenerateECCSR(csr, pkey, sigalgo)
 	if errCsr != nil {
-		fmt.Printf("\nError Generating CSR [%s]", errCsr)
+		glog.Errorf("Error Generating CSR [%s]", errCsr.Error())
 		return "", "", errCsr
 	}
-	fmt.Printf("\nCSR Generated")
-	/* Get the HTTP Request */
+	glog.Infof("CSR Generated")
+
+	// Get the HTTP Request 
 	httpReq := chttp.GetSimpleEnrollRequest(string(csrDer))
-	/* Connect to Server */
+
+	// Connect to Server 
 	cfd := getconnectedsocket(ip, port)
 	if cfd < 0 {
 		return "", "", errors.New("TCP Error")
 	}
 	defer syscall.Close(cfd)
-	/* set ID PASS */
+
+	// set ID PASS 
 	setidpass(eid, esec)
 	defer invalidateidpass()
-	/* Do SSL Handshake */
+
+	// Do SSL Handshake 
 	cSSL := getconnectedcssl(cfd, eid)
 	if cSSL == nil {
 		return "", "", errors.New("SSL Error")
 	}
-	fmt.Printf("\nSending Req to the Server\n%s", string(httpReq))
-	/* Send the Request to the Server */
+	glog.Infof("Sending Req to the Server %s", string(httpReq))
+
+	// Send the Request to the Server 
 	retval := cssl.CSSLWrite(cSSL, httpReq, uint(len(httpReq)))
 	if retval != cssl.CSSL_APP_ERR_EOK {
-		fmt.Printf("\nCould not Send Request to Server [%d]", retval)
+		glog.Errorf("Could not Send Request to Server [%d]", retval)
 		cssl.CSSLDelete(cSSL)
 		return "", "", errors.New("Error Sending Req")
 	}
-	/* Wait for Response */
+
+	// Wait for Response 
 	read_bytes, rlen, rerr := cssl.CSSLReadN(cSSL, 2048)
 	if rerr != cssl.CSSL_APP_ERR_EOK {
-		fmt.Printf("\nGot Error while Reading Data from Server")
+		glog.Errorf("Got Error while Reading Data from Server")
 		cssl.CSSLDelete(cSSL)
 		return "", "", errors.New("Error Reading Response")
 	}
-	/* Clean up SSL */
+
+	// Clean up SSL 
 	cssl.CSSLDelete(cSSL)
-	fmt.Printf("\nReceived Response From Server [%d bytes]\n%s", rlen, string(read_bytes))
-	/* Let us Handle the Response */
+	glog.Infof("Received Response From Server [%d bytes] %s", rlen, string(read_bytes))
+
+	// Let us Handle the Response 
 	CertPem, errCert := chttp.HandleSimpleEnrollResponse(read_bytes)
 	if errCert != nil {
-		fmt.Printf("\nInvalid Cert %s", errCert)
+		glog.Errorf("Invalid Cert %s", errCert.Error())
 		return "", "", errCert
 	}
-	/* We have the Cert, lets PEM Encode the Key */
+
+	// We have the Cert, lets PEM Encode the Key 
 	//pkeyPem := cca.GetECKeyPem(pkey);
 	pkeyPem := cca.GetECKeyPemWithAttr(pkey, kcurve)
+
 	//Trim EC PARAMETERS from pkey
 	pkeyPem1 := strings.Split(pkeyPem, "\n\n")
-	/* Successfully processed everything, lets return */
-	fmt.Printf("\nGenerating Key and Fetching Cert Successful")
+
+	// Successfully processed everything, lets return 
+	glog.Infof("Generating Key and Fetching Cert Successful")
+
 	return pkeyPem1[1], CertPem, nil
 }

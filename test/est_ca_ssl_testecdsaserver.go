@@ -16,11 +16,11 @@
 package main
 
 import (
-	"est/cssl"
 	"fmt"
 	"net"
 	"os"
 	"syscall"
+	"github.com/cisco/hyperledger-est-ca/cssl"
 )
 
 /* some global test variables */

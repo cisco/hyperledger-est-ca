@@ -16,11 +16,11 @@
 package main
 
 import (
-	"est/cssl"
 	"fmt"
 	"net"
 	"os"
 	"syscall"
+	"github.com/cisco/hyperledger-est-ca/cssl"
 )
 
 var example_kpath = "certs2/id2.pem"

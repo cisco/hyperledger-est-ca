@@ -16,11 +16,11 @@
 package main
 
 import (
-	"est/cssl"
 	"fmt"
 	"net"
 	"os"
 	"syscall"
+	"github.com/cisco/hyperledger-est-ca/cssl"
 )
 
 /* A func to fetch the PSK using ID */

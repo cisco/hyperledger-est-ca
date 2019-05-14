@@ -16,9 +16,17 @@ EST-CA has a dependency on openssl-1.0.2g and libssl-dev-1.0.2g libraries(golang
 
 To build and run EST server -
 
-/opt/gopath/src/est $ export GOPATH=/opt/gopath/
-/opt/gopath/src/est $ go build -o est_server  est_server_main.go
-/opt/gopath/src/est $ ./est_server $GOPATH/config/config.yaml
+/opt/gopath/src/$ export GOPATH=/opt/gopath/
+
+/opt/gopath/src/$ git clone https://github.com/cisco/hyperledger-est-ca.git
+
+/opt/gopath/src/github.com/cisco/hyperledger-est-ca$ ./build.sh
+
+/opt/gopath/src/github.com/cisco/hyperledger-est-ca$ docker images
+REPOSITORY        TAG          IMAGE ID        CREATED             SIZE
+cisco/est-ca      0.0.3        8452043c0ba1    14 minutes ago      37.5MB
+
+/opt/gopath/src/github.com/cisco/hyperledger-est-ca$ docker run -d --rm -e EST_CA_ADMIN_NAME="admin" -e EST_CA_ADMIN_PASSWD="Cisco@123" -p 443:443 -p 8080:8080 cisco/est-ca:0.0.3
 
 EST Clients must use the APIs from caclient & chttp package.
 

@@ -22,7 +22,7 @@ crypto:
   type: 'sw'
 admin:
   ip: '10.10.10.10'
-  port: 7021
+  port: 8080
 est:
   auth_method: 'http-basic-auth'
   ip: '10.10.10.10'
@@ -47,7 +47,7 @@ ldap:
   url: 'host1.cisco.com'
   tls:
     server_certs:
-      - certfile: '/etc/ldap-server-cert.pem'
+      certfile: '/etc/ldap-server-cert.pem'
     client:
       certfile: '/etc/ldap-client-cert.pem'
       keyfile: '/etc/ldap-client-key.pem'

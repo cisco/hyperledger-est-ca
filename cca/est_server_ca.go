@@ -16,26 +16,23 @@
 package cca
 
 import (
-	"fmt"
-	//"strings"
-	"crypto/ecdsa"
-	"crypto/elliptic"
+	"net"
+	"time"
+	"errors"
+	"strings"
+	"math/big"
 	"crypto/rand"
 	"crypto/sha1"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"encoding/asn1"
 	"encoding/base64"
-	"encoding/pem"
-	"errors"
-	"est/cdb"
-	"est/config"
-	"math/big"
-	"net"
-	"strings"
-	"time"
-	//"github.com/cloudflare/cfssl/config"
-	//cfcsr "github.com/cloudflare/cfssl/csr"
+	"github.com/golang/glog"
+	"github.com/cisco/hyperledger-est-ca/cdb"
+	"github.com/cisco/hyperledger-est-ca/config"
 )
 
 const (
@@ -130,14 +127,16 @@ func GenerateECCSR(csr *config.CertAttributes, key *ecdsa.PrivateKey, sigalgo ui
 		},
 		SignatureAlgorithm: x509.SignatureAlgorithm(sigalgo),
 		DNSNames:           []string{csr.Subaltname.Host},
-		//IPAddresses:			[]net.IP{net.ParseIP(csr.Subaltname.Ip)},
+		//IPAddresses:	[]net.IP{net.ParseIP(csr.Subaltname.Ip)},
 	}
+
 	if csr.Subaltname.Ip != "" {
 		template.IPAddresses = []net.IP{net.ParseIP(csr.Subaltname.Ip)}
 	}
+
 	derBytes, err := x509.CreateCertificateRequest(random, &template, key)
 	if err != nil {
-		fmt.Printf("\nCould not generate CSR [%s]", err)
+		glog.Errorf("Could not generate CSR [%s]", err.Error())
 		return nil, err
 	}
 
@@ -151,7 +150,7 @@ func ParseCSR(csr []byte) (*x509.CertificateRequest, error) {
 func ValidateCSR(csr *x509.CertificateRequest) bool {
 	err := csr.CheckSignature()
 	if err != nil {
-		fmt.Printf("\nSignature validation for the CSR failed")
+		glog.Errorf("Signature validation for the CSR failed")
 		return false
 	}
 	return true
@@ -181,21 +180,24 @@ func UpdateCSRRole(csr *x509.CertificateRequest, enrollItem *cdb.EnrollTable) {
 	csr.ExtraExtensions = []pkix.Extension{role}
 }
 
-func UpdateCSRSubName(csr *x509.CertificateRequest, enrollItem *cdb.EnrollTable,
-	profItem *config.CAProfile) {
-	/* Update CN to ID for now */
+func UpdateCSRSubName(csr *x509.CertificateRequest, enrollItem *cdb.EnrollTable, profItem *config.CAProfile) {
+	// Update CN to ID for now 
 	csr.Subject.CommonName = enrollItem.EnrollId
-	/* Profile takes precedence for attributes */
+
+	// Profile takes precedence for attributes 
 	if profItem.Attr.Subname.O != "" {
 		csr.Subject.Organization = []string{profItem.Attr.Subname.O}
 	}
+
 	if profItem.Attr.Subname.Ou != "" {
 		csr.Subject.OrganizationalUnit = []string{profItem.Attr.Subname.Ou}
 	}
+
 	if profItem.Attr.Subname.C != "" {
 		csr.Subject.Country = []string{profItem.Attr.Subname.C}
 	}
-	/* The Sub Alt name should be cn.o */
+
+	// The Sub Alt name should be cn.o 
 	fqdn := strings.Join([]string{enrollItem.EnrollId, csr.Subject.Organization[0]}, ".")
 	csr.DNSNames = []string{fqdn}
 }
@@ -205,9 +207,8 @@ func GetCertObject(certder []byte) (*x509.Certificate, error) {
 	return cert[0], err
 }
 
-func GenerateSignedCert(csr *x509.CertificateRequest, cakey *ecdsa.PrivateKey,
-	cacert *x509.Certificate, sigalgo uint,
-	validity uint64, serial int64) ([]byte, error) {
+func GenerateSignedCert(csr *x509.CertificateRequest, cakey *ecdsa.PrivateKey, cacert *x509.Certificate, sigalgo uint, validity uint64, serial int64) ([]byte, error) {
+
 	random := rand.Reader
 	tnow := time.Now()
 	duration := GetMaxValidity(tnow, cacert.NotAfter, validity)
@@ -215,7 +216,7 @@ func GenerateSignedCert(csr *x509.CertificateRequest, cakey *ecdsa.PrivateKey,
 
 	subkeyID, errkey := GetSubKeyIDFromPInterface(csr.PublicKey)
 	if errkey != nil {
-		fmt.Printf("\nCould not calculate Subject Key ID %s", errkey)
+		glog.Errorf("Could not calculate Subject Key ID %s", errkey.Error())
 		return []byte(""), errkey
 	}
 
@@ -233,13 +234,15 @@ func GenerateSignedCert(csr *x509.CertificateRequest, cakey *ecdsa.PrivateKey,
 		IPAddresses:     csr.IPAddresses,
 		ExtraExtensions: csr.ExtraExtensions,
 	}
+
 	derBytes, err := x509.CreateCertificate(random, &template,
 		cacert, csr.PublicKey, cakey)
+
 	return derBytes, err
 }
 
-func GenerateSelfSignedCert(csr *config.CertAttributes, key *ecdsa.PrivateKey,
-	sigalgo uint, validity uint64, serial int64) ([]byte, error) {
+func GenerateSelfSignedCert(csr *config.CertAttributes, key *ecdsa.PrivateKey, sigalgo uint, validity uint64, serial int64) ([]byte, error) {
+
 	random := rand.Reader
 	duration := time.Duration(validity) * time.Hour
 	tnow := time.Now()
@@ -247,7 +250,7 @@ func GenerateSelfSignedCert(csr *config.CertAttributes, key *ecdsa.PrivateKey,
 
 	subkeyID, errkey := GetSubKeyID(key)
 	if errkey != nil {
-		fmt.Printf("\nCould not calculate Subject Key ID %s", errkey)
+		glog.Errorf("Could not calculate Subject Key ID %s", errkey.Error())
 		return []byte(""), errkey
 	}
 
@@ -269,7 +272,9 @@ func GenerateSelfSignedCert(csr *config.CertAttributes, key *ecdsa.PrivateKey,
 		DNSNames:    []string{csr.Subaltname.Host},
 		IPAddresses: []net.IP{net.ParseIP(csr.Subaltname.Ip)},
 	}
+
 	derBytes, err := x509.CreateCertificate(random, &template, &template, &key.PublicKey, key)
+
 	return derBytes, err
 }
 
@@ -279,7 +284,7 @@ func GetCertFingerprint(certder []byte) ([]byte, x509.SignatureAlgorithm) {
 
 	cert, err := x509.ParseCertificate(certder)
 	if err != nil {
-		fmt.Printf("\nCould not parse the certificate")
+		glog.Errorf("Could not parse the certificate")
 		return res, ressigalgo
 	}
 
@@ -303,7 +308,7 @@ func GetSHA1Hash(in []byte) []byte {
 func GetSubKeyIDFromPInterface(pubkey interface{}) ([]byte, error) {
 	pkeyDer, err := x509.MarshalPKIXPublicKey(pubkey)
 	if err != nil {
-		fmt.Printf("\nCould not get Pkey in DER [%s]", err)
+		glog.Errorf("Could not get Pkey in DER [%s]", err.Error())
 		return []byte(""), err
 	}
 	return GetSHA1Hash(pkeyDer), nil
@@ -312,7 +317,7 @@ func GetSubKeyIDFromPInterface(pubkey interface{}) ([]byte, error) {
 func GetSubKeyID(key *ecdsa.PrivateKey) ([]byte, error) {
 	pkeyDer, err := GetECPubKeyDer(key)
 	if err != nil {
-		fmt.Printf("\nCould not Get Public Key In DER [%s]", err)
+		glog.Errorf("Could not Get Public Key In DER [%s]", err.Error())
 		return []byte(""), err
 	}
 	return GetSHA1Hash(pkeyDer), nil
@@ -329,10 +334,11 @@ func Base64Decode(in string) ([]byte, error) {
 func GetECKeyPem(pk *ecdsa.PrivateKey) string {
 	kder, err := x509.MarshalECPrivateKey(pk)
 	if err != nil {
-		fmt.Printf("\nGot Error [%s] while marshalling key", err)
+		glog.Errorf("Got Error [%s] while marshalling key", err.Error())
 		return ""
 	}
-	/* Encode the Pkey into PEM */
+
+	// Encode the Pkey into PEM 
 	keyPem := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: kder})
 	return string(keyPem)
 }
@@ -345,12 +351,14 @@ func GetCertPem(cerder []byte) string {
 func GetECKeyPemWithAttr(pk *ecdsa.PrivateKey, curve uint8) string {
 	var ecattrDer []byte
 	var err1 error
+
 	kder, err := x509.MarshalECPrivateKey(pk)
 	if err != nil {
-		fmt.Printf("\nGot Error [%s] while marshalling key", err)
+		glog.Errorf("Got Error [%s] while marshalling key", err.Error())
 		return ""
 	}
-	/* Get the EC Attributes */
+
+	// Get the EC Attributes 
 	switch curve {
 	case CurveP256:
 		ecattrDer, err1 = asn1.Marshal(CurveP256OID)
@@ -359,17 +367,21 @@ func GetECKeyPemWithAttr(pk *ecdsa.PrivateKey, curve uint8) string {
 	case CurveP521:
 		ecattrDer, err1 = asn1.Marshal(CurveP521OID)
 	default:
-		fmt.Printf("\nInvalid Curve")
+		glog.Errorf("Invalid Curve")
 		return ""
 	}
+
 	if err1 != nil {
-		fmt.Printf("\nError while marshalling attribute [%s]", err1)
+		glog.Errorf("Error while marshalling attribute [%s]", err1.Error())
 	}
-	/* Encode EC Attributes into PEM */
+
+	// Encode EC Attributes into PEM 
 	ecAttr := pem.EncodeToMemory(&pem.Block{Type: "EC PARAMETERS", Bytes: ecattrDer})
-	/* Encode the Pkey into PEM */
+
+	// Encode the Pkey into PEM 
 	keyPem := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: kder})
 	pemOut := strings.Join([]string{string(ecAttr), string(keyPem)}, "\n")
+
 	return pemOut
 }
 
@@ -387,40 +399,46 @@ func PemDecode(in []byte) (*pem.Block, error) {
 }
 
 func HandleGetCACert(id string) ([]byte, error) {
-	/* Connect To DB */
+	// Connect To DB 
 	db := cdb.InitDB(config.GetDBInfo().Dbfile)
 	EnrollItem, count := cdb.SearchEnrollItem(db, id)
 	if count != 1 {
-		fmt.Printf("\nSomething wrong with Enroll Table")
+		glog.Errorf("Something wrong with Enroll Table")
 		return nil, errors.New("Invalid Enroll ID")
 	}
+
 	if EnrollItem.Ca == "" {
 		EnrollItem.Ca = config.GetDefaultCA()
 	}
+
 	ca, cacnt := cdb.SearchCaItem(db, EnrollItem.Ca)
 	if cacnt != 1 {
-		fmt.Printf("\nSomething is wrong with the DB for %s count %d", EnrollItem.Ca, cacnt)
+		glog.Errorf("Something is wrong with the DB for %s count %d", EnrollItem.Ca, cacnt)
 		return nil, errors.New("DB Corrupt")
 	}
-	fmt.Printf("\nFound CAcert\n")
+
+	glog.Infof("Found CAcert")
 	cader, errd := Base64Decode(ca.Cert)
+
 	return cader, errd
 }
 
 func HandleSimpleEnrollRequest(id, csr string) ([]byte, error) {
 	var certItem cdb.CertTable
 
-	/* Convert to Certificate Request Object */
+	// Convert to Certificate Request Object 
 	csrObj, err := ParseCSR([]byte(csr))
 	if err != nil {
-		fmt.Printf("\nInvalid CSR [%s]", err)
+		glog.Errorf("Invalid CSR [%s]", err.Error())
 		return nil, err
 	}
-	/* Validate Signature */
+
+	// Validate Signature 
 	if !ValidateCSR(csrObj) {
-		fmt.Printf("\nFailed to validate Signature on CSR")
+		glog.Errorf("Failed to validate Signature on CSR")
 		return nil, errors.New("Invalid CSR Signature")
 	}
+
 	/*
 	 * Now that we have a valid CSR, lets first get the enrollment profile
 	 * Check if a cert is already enrolled.. If yes, we will ignore this
@@ -430,91 +448,107 @@ func HandleSimpleEnrollRequest(id, csr string) ([]byte, error) {
 	 * enroll table and return the der cert enrolled
 	 */
 
-	/* First Get the Enroll Table Item */
+	// First Get the Enroll Table Item 
 	db := cdb.InitDB(config.GetDBInfo().Dbfile)
 	EnrollItem, count := cdb.SearchEnrollItem(db, id)
 	if count != 1 {
-		fmt.Printf("\nSomething is wrong with the Enroll Table")
+		glog.Errorf("Something is wrong with the Enroll Table")
 		return nil, errors.New("DB Corrupt")
 	}
-	/* Check if Cert already issued */
+
+	// Check if Cert already issued 
 	if EnrollItem.Status != 0 {
-		fmt.Printf("\nCert is Already issued for this ID.. Rejecting Request")
+		glog.Errorf("Cert is Already issued for this ID.. Rejecting Request")
 		return nil, errors.New("Cert Already Issued")
 	}
-	/* Set the CA name */
+
+	// Set the CA name 
 	if EnrollItem.Ca == "" {
 		EnrollItem.Ca = config.GetDefaultCA()
 	}
-	/* Set the CA Profile Name */
+
+	// Set the CA Profile Name 
 	if EnrollItem.CaProfile == "" {
 		EnrollItem.CaProfile = config.GetDefaultCAProfile()
 	}
-	/* lets get the CA Profile Item and CA item */
+
+	// lets get the CA Profile Item and CA item 
 	ca, cacnt := cdb.SearchCaItem(db, EnrollItem.Ca)
 	if cacnt != 1 {
-		fmt.Printf("\nSomething is wrong with the DB")
+		glog.Errorf("Something is wrong with the DB")
 		return nil, errors.New("DB Corrupt")
 	}
-	/* CA Profile will be stored in DB, however, currently, it is in Config */
+
+	// CA Profile will be stored in DB, however, currently, it is in Config 
 	caProfile := config.FindCAProfileByName(EnrollItem.CaProfile)
 	if caProfile == nil {
-		fmt.Printf("\nDid not find a relevant CA Profile")
+		glog.Errorf("Did not find a relevant CA Profile")
 		return nil, errors.New("Invalid CA Profile")
 	}
-	/* Update the CSR to reflect the new CN/O/OU/C */
+
+	// Update the CSR to reflect the new CN/O/OU/C 
 	UpdateCSRSubName(csrObj, &EnrollItem, caProfile)
 
-	/* Update the CSR to reflect role */
+	// Update the CSR to reflect role 
 	UpdateCSRRole(csrObj, &EnrollItem)
 
-	/* Get Ca key obj */
+	// Get Ca key obj 
 	derk, errk := Base64Decode(ca.Key)
 	if errk != nil {
-		fmt.Printf("\nCould not get Ca Private Key [%s]", errk)
+		glog.Errorf("Could not get Ca Private Key [%s]", errk.Error())
 		return nil, errors.New("Failed to get Ca Key")
 	}
+
 	cakey, errK := x509.ParseECPrivateKey(derk)
 	if errK != nil {
-		fmt.Printf("\nCould not Decrypt Ca Key [%s]", errK)
+		glog.Errorf("Could not Decrypt Ca Key [%s]", errK.Error())
 		return nil, errors.New("Failed to decrypt CA Key")
 	}
-	/* Get CA Cert Obj */
+
+	// Get CA Cert Obj 
 	cacertder, errc := Base64Decode(ca.Cert)
 	if errc != nil {
-		fmt.Printf("\nError getting CA Cert [%s]", errc)
+		glog.Errorf("Error getting CA Cert [%s]", errc.Error())
 		return nil, errors.New("Failed to get Ca cert")
 	}
+
 	cacert, errC := GetCertObject(cacertder)
 	if errC != nil {
-		fmt.Printf("\nError parsing Ca cert [%s]", errC)
+		glog.Errorf("Error parsing Ca cert [%s]", errC.Error())
 		return nil, errors.New("Failed to decode CA Cert")
 	}
-	/* Get Serial */
+
+	// Get Serial 
 	serial := ca.Serial + 1
-	/* Let us issue the certificate for this csr */
+
+	// Let us issue the certificate for this csr 
 	ecert, errec := GenerateSignedCert(csrObj, cakey, cacert,
 		uint(cacert.SignatureAlgorithm),
 		caProfile.Validity, int64(serial))
 	if errec != nil {
-		fmt.Printf("\nCould not Generate EC Cert [%s]", errec)
+		glog.Errorf("Could not Generate EC Cert [%s]", errec.Error())
 		return nil, errec
 	}
-	/* Update the CA Serial */
+
+	// Update the CA Serial 
 	ca.Serial = ca.Serial + 1
-	/* Update CA Enroll Count */
+
+	// Update CA Enroll Count 
 	ca.EnrollCount = ca.EnrollCount + 1
-	/* Store the CA Item back into the DB */
+
+	// Store the CA Item back into the DB 
 	cdb.StoreCaItem(db, &ca)
-	/* Update the EnrollItem */
+
+	// Update the EnrollItem 
 	EnrollItem.Status = 1
 	cdb.StoreEnrollItem(db, EnrollItem)
-	/* create a Cert table entry */
+
+	// create a Cert table entry 
 	certItem.EnrollId = EnrollItem.EnrollId
 	certItem.Certificate = Base64Encode(ecert)
 	certItem.Csr = Base64Encode([]byte(csr))
 	cdb.StoreCertItem(db, certItem)
 
-	/* All done.. return the ecert now */
+	// All done.. return the ecert now 
 	return ecert, nil
 }

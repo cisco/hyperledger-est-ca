@@ -46,9 +46,9 @@ package cssl
 */
 import "C"
 import (
-	"fmt"
 	"strings"
 	"unsafe"
+	"github.com/golang/glog"
 )
 
 const (
@@ -119,12 +119,12 @@ type CSSL struct {
 	ssl_ctx *C.struct_ssl_ctx_st
 }
 
-/* Function to set debug level */
+// Function to set debug level 
 func CSSLSetDebug(flag bool) {
 	cssl_debug = flag
 }
 
-/* Function to initialize the SSL Library */
+// Function to initialize the SSL Library 
 func CSSLInit() {
 	if ssl_init != true {
 		C.SSL_library_init()
@@ -151,13 +151,13 @@ func CSSLSetAdminMode(cssl *CSSL) {
 	cssl.isadmin = true
 }
 
-/* Function to create a new Server SSL binding */
+// Function to create a new Server SSL binding 
 func CSSLGetNewServer(fd int) *CSSL {
 	var cssl *CSSL
 
 	cssl = new(CSSL)
 	if cssl == nil {
-		fmt.Printf("\nCould not allocate new CSSL")
+		glog.Errorf("Could not allocate new CSSL")
 		return nil
 	}
 
@@ -171,14 +171,14 @@ func CSSLGetNewServer(fd int) *CSSL {
 	C.SSL_CTX_set_quiet_shutdown(cssl.ssl_ctx, 1)
 	retec := C.CSSL_CTX_set_ecdh_auto(cssl.ssl_ctx, 1)
 	if int(retec) != 1 {
-		fmt.Printf("\nFailed to enable ecdh auto mode")
+		glog.Errorf("Failed to enable ecdh auto mode")
 	}
 	C.CSSL_CTX_set_options(cssl.ssl_ctx)
 
 	return cssl
 }
 
-/* Function to get a new SSL servelet */
+// Function to get a new SSL servelet 
 func CSSLGetNewServelet(fd int, cssl *CSSL) (*CSSL, uint8) {
 	var cssl_new *CSSL
 	var retval uint8
@@ -188,17 +188,18 @@ func CSSLGetNewServelet(fd int, cssl *CSSL) (*CSSL, uint8) {
 	}
 	cssl_new = new(CSSL)
 	if cssl_new == nil {
-		fmt.Printf("\nCould not allocate new CSSL")
+		glog.Errorf("Could not allocate new CSSL")
 		return nil, CSSL_APP_ERR_RESOURCES
 	}
 
 	cssl_new.mode = SSL_MODE_SERVER
 	cssl_new.ssl = C.SSL_new(cssl.ssl_ctx)
 	if cssl_new.ssl == nil {
-		fmt.Printf("\nCould not allocate SSL for servelet")
+		glog.Errorf("Could not allocate SSL for servelet")
 		return nil, CSSL_APP_ERR_RESOURCES
 	}
-	/* set admin mode to recognize if Admin mode */
+
+	// set admin mode to recognize if Admin mode 
 	if cssl.isadmin {
 		cssl_new.isadmin = true
 		CSSLSetAdmin(cssl_new)
@@ -207,26 +208,26 @@ func CSSLGetNewServelet(fd int, cssl *CSSL) (*CSSL, uint8) {
 	cssl_new.fd = fd
 	ret := C.SSL_set_fd(cssl_new.ssl, (C.int)(fd))
 	if ret != 1 {
-		fmt.Printf("\nCould not set SSL fd %d", ret)
+		glog.Errorf("Could not set SSL fd %d", ret)
 		return nil, CSSL_APP_ERR_UNKNOWN
 	}
 	CSSLAddFdToMap(fd, cssl_new)
 
 	ret = C.SSL_accept(cssl_new.ssl)
 	if ret > 0 {
-		fmt.Printf("\nSSL handshake completed successfully")
+		glog.Infof("SSL handshake completed successfully")
 		cssl_new.ssl_up = true
 		retval = CSSL_APP_ERR_EOK
 	} else {
 		app_ret := C.SSL_get_error(cssl_new.ssl, ret)
-		fmt.Printf("\nSSL Accept returned error %d", uint8(app_ret))
+		glog.Errorf("SSL Accept returned error %d", uint8(app_ret))
 		retval = CSSLTranslateSSLError(uint8(app_ret))
 	}
 
 	return cssl_new, retval
 }
 
-/* Function to Get new Client SSL binding */
+// Function to Get new Client SSL binding 
 func CSSLGetNewClient(fd int) *CSSL {
 	var cssl *CSSL
 
@@ -249,13 +250,13 @@ func CSSLGetNewClient(fd int) *CSSL {
 	//C.SSL_CTX_set_options(cssl.ssl_ctx, (C.uint32_t)(SSL_OP_ALL));
 	retec := C.CSSL_CTX_set_ecdh_auto(cssl.ssl_ctx, 1)
 	if int(retec) != 1 {
-		fmt.Printf("\nFailed to enable ecdh auto mode")
+		glog.Errorf("Failed to enable ecdh auto mode")
 	}
 
 	return cssl
 }
 
-/* Function to set the Cipher from cipher string */
+// Function to set the Cipher from cipher string 
 func CSSLSetCipher(cssl *CSSL, cipher string) bool {
 	if cssl == nil {
 		return false
@@ -265,11 +266,11 @@ func CSSLSetCipher(cssl *CSSL, cipher string) bool {
 	ret := C.SSL_CTX_set_cipher_list(cssl.ssl_ctx, cip)
 	C.free(unsafe.Pointer(cip))
 	if ret == 0 {
-		fmt.Printf("\nCould not set the cipher list %s", cipher)
+		glog.Errorf("Could not set the cipher list %s", cipher)
 		return false
 	}
 
-	/* Set PSK Call back if the cipher contains psk */
+	// Set PSK Call back if the cipher contains psk 
 	if strings.Contains(cipher, "PSK") {
 		if cssl.mode == SSL_MODE_SERVER {
 			C.SSL_CTX_set_psk_server_callback(cssl.ssl_ctx, (*[0]byte)(C.cssl_c_psk_server_cb))
@@ -277,21 +278,21 @@ func CSSLSetCipher(cssl *CSSL, cipher string) bool {
 			C.SSL_CTX_set_psk_client_callback(cssl.ssl_ctx, (*[0]byte)(C.cssl_c_psk_client_cb))
 		}
 	}
-	/* Set Certificate Verify callback */
+	// Set Certificate Verify callback 
 	if strings.Contains(cipher, "RSA") {
 		//C.SSL_CTX_set_cert_verify_callback(cssl.ssl_ctx, (*[0]byte)(C.cssl_c_cert_verify_cb));
 	}
 
 	if strings.Contains(cipher, "ECDHE") {
-		fmt.Printf("\nECDHE Cipher configured")
+		glog.Infof("\nECDHE Cipher configured")
 	}
 
-	/* TODO:Add DHE cases later */
+	// TODO:Add DHE cases later 
 
 	return true
 }
 
-/* Function to set PSK hint */
+// Function to set PSK hint 
 func CSSLSetPSKHint(cssl *CSSL, hint string) bool {
 	if cssl == nil {
 		return false
@@ -307,7 +308,7 @@ func CSSLSetPSKHint(cssl *CSSL, hint string) bool {
 	return true
 }
 
-/* Enable peer cert validation */
+// Enable peer cert validation 
 func CSSLEnablePeerCertValidation(cssl *CSSL) bool {
 	if cssl == nil || cssl.ssl_ctx == nil {
 		return false
@@ -321,17 +322,17 @@ func CSSLEnablePeerCertValidation(cssl *CSSL) bool {
 	return true
 }
 
-/* Set PSK Callback for fetching key from id */
+// Set PSK Callback for fetching key from id 
 func CSSLSetPSKCb(cb CSSLPSKCb) {
 	cssl_psk_cb = cb
 }
 
-/* Set PSK Callback for fetching key from id */
+// Set PSK Callback for fetching key from id 
 func CSSLSetAdminPSKCb(cb CSSLPSKCb) {
 	cssl_psk_admin_cb = cb
 }
 
-/* Translate SSL Error to APP Error */
+// Translate SSL Error to APP Error 
 func CSSLTranslateSSLError(err uint8) uint8 {
 	var x uint8
 
@@ -348,7 +349,7 @@ func CSSLTranslateSSLError(err uint8) uint8 {
 	return x
 }
 
-/* Connect to the SSL server */
+// Connect to the SSL server 
 func CSSLClientConnect(cssl *CSSL) uint8 {
 	var retval uint8
 
@@ -362,21 +363,21 @@ func CSSLClientConnect(cssl *CSSL) uint8 {
 
 	cssl.ssl = C.SSL_new(cssl.ssl_ctx)
 	if cssl.ssl == nil {
-		fmt.Printf("\nCould not allocate SSL for client")
+		glog.Errorf("Could not allocate SSL for client")
 		return CSSL_APP_ERR_RESOURCES
 	}
 
 	ret := C.SSL_set_fd(cssl.ssl, (C.int)(cssl.fd))
 	if ret != 1 {
-		fmt.Printf("\nCould not set SSL fd %d", ret)
+		glog.Errorf("Could not set SSL fd %d", ret)
 		return CSSL_APP_ERR_SYSCALL
 	}
 
-	/* Also set the psk id into SSL */
+	// Also set the psk id into SSL 
 	if cssl.pskid != nil {
 		cpskid := C.CString(*cssl.pskid)
 		if cpskid == nil {
-			fmt.Printf("\nCould not allocate c mem for psk id")
+			glog.Errorf("Could not allocate c mem for psk id")
 			return CSSL_APP_ERR_RESOURCES
 		}
 		C.SSL_set_ex_data(cssl.ssl, 100, unsafe.Pointer(cpskid))
@@ -385,10 +386,10 @@ func CSSLClientConnect(cssl *CSSL) uint8 {
 	if rval == 1 {
 		cssl.ssl_up = true
 		retval = CSSL_APP_ERR_EOK
-		fmt.Printf("\nSSL handshake completed")
+		glog.Infof("SSL handshake completed")
 	} else {
 		app_ret := C.SSL_get_error(cssl.ssl, ret)
-		fmt.Printf("\nSSL Connect returned error %d", app_ret)
+		glog.Errorf("SSL Connect returned error %d", app_ret)
 		retval = CSSLTranslateSSLError(uint8(app_ret))
 	}
 
@@ -398,7 +399,7 @@ func CSSLClientConnect(cssl *CSSL) uint8 {
 func CSSLStoreID(cssl *CSSL, id string) {
 	cadmin := C.CString(id)
 	if cadmin == nil {
-		fmt.Printf("\nCould not store ID")
+		glog.Errorf("Could not store ID")
 		return
 	}
 	C.SSL_set_ex_data(cssl.ssl, 110, unsafe.Pointer(cadmin))
@@ -408,7 +409,7 @@ func CSSLGetID(cssl *CSSL) string {
 	cid := C.SSL_get_ex_data(cssl.ssl, 110)
 	if cid != nil {
 		id := C.GoString((*C.char)(cid))
-		fmt.Printf("\nID is %s", id)
+		glog.Infof("ID is %s", id)
 		return id
 	}
 	return ""
@@ -417,7 +418,7 @@ func CSSLGetID(cssl *CSSL) string {
 func CSSLSetAdmin(cssl *CSSL) {
 	cadmin := C.CString(admn_identifier)
 	if cadmin == nil {
-		fmt.Printf("\nCould not set Admin Flag")
+		glog.Errorf("Could not set Admin Flag")
 		return
 	}
 	C.SSL_set_ex_data(cssl.ssl, 100, unsafe.Pointer(cadmin))
@@ -427,17 +428,17 @@ func CSSLIsAdmin(ssl *C.struct_ssl_st) bool {
 	isad := C.SSL_get_ex_data(ssl, 100)
 	if isad != nil {
 		isAdmin := C.GoString((*C.char)(isad))
-		fmt.Printf("\nisad is %s", isAdmin)
+		glog.Infof("isad is %s", isAdmin)
 		if isAdmin == admn_identifier {
 			return true
 		}
 	} else {
-		fmt.Printf("\nnothiing set in 100")
+		glog.Errorf("nothiing set in 100")
 	}
 	return false
 }
 
-/* Free the CSSL C structures */
+// Free the CSSL C structures 
 func CSSLDelete(cssl *CSSL) {
 	if cssl == nil {
 		return
@@ -468,7 +469,7 @@ func CSSLDelete(cssl *CSSL) {
 	}
 }
 
-/* SSL Handshake */
+// SSL Handshake 
 func CSSLDoHandshake(cssl *CSSL) uint8 {
 	var retval uint8
 
@@ -484,12 +485,12 @@ func CSSLDoHandshake(cssl *CSSL) uint8 {
 
 	err := C.SSL_get_error(cssl.ssl, ret)
 	retval = CSSLTranslateSSLError(uint8(err))
-	fmt.Printf("\nSSL do handshake returned err %d App Err %d", err, retval)
+	glog.Errorf("SSL do handshake returned err %d App Err %d", err, retval)
 
 	return retval
 }
 
-/* SSL Read returns Entire frame as present in buffer */
+// SSL Read returns Entire frame as present in buffer 
 func CSSLRead(cssl *CSSL) ([]byte, uint, uint8) {
 	var to_read C.int
 
@@ -501,15 +502,16 @@ func CSSLRead(cssl *CSSL) ([]byte, uint, uint8) {
 
 	to_read = C.SSL_pending(cssl.ssl)
 	if to_read == 0 {
-		fmt.Printf("\nSSL read pending returned 0")
+		glog.Errorf("SSL read pending returned 0")
 		return nil, 0, CSSL_APP_ERR_WANT_READ
 	}
 
 	buff := C.malloc((C.size_t(to_read)))
 	if buff == nil {
-		fmt.Printf("\nCould not allocate buffer for reading data")
+		glog.Errorf("Could not allocate buffer for reading data")
 		return nil, 0, CSSL_APP_ERR_RESOURCES
 	}
+
 	ret := C.SSL_read(cssl.ssl, unsafe.Pointer(buff), to_read)
 	if ret < 0 {
 		err := C.SSL_get_error(cssl.ssl, ret)
@@ -517,10 +519,10 @@ func CSSLRead(cssl *CSSL) ([]byte, uint, uint8) {
 		return nil, 0, retval
 	}
 
-	/* we have a buffer read.. lets convert it to a []byte */
+	// we have a buffer read.. lets convert it to a []byte 
 	readbuff := C.GoBytes(unsafe.Pointer(buff), ret)
 	if readbuff == nil {
-		fmt.Printf("\nCould not allocate []byte for read buffer")
+		glog.Errorf("Could not allocate []byte for read buffer")
 		return nil, 0, CSSL_APP_ERR_RESOURCES
 	}
 
@@ -528,7 +530,7 @@ func CSSLRead(cssl *CSSL) ([]byte, uint, uint8) {
 	return readbuff, uint(ret), CSSL_APP_ERR_EOK
 }
 
-/* SSL Rean N bytes from the buffer */
+// SSL Rean N bytes from the buffer 
 func CSSLReadN(cssl *CSSL, to_read uint) ([]byte, uint, uint8) {
 
 	if (cssl == nil) || (cssl.ssl_up != true) {
@@ -539,9 +541,10 @@ func CSSLReadN(cssl *CSSL, to_read uint) ([]byte, uint, uint8) {
 
 	buff := C.malloc((C.size_t)(to_read))
 	if buff == nil {
-		fmt.Printf("\nCould not allocate buffer for reading data")
+		glog.Errorf("Could not allocate buffer for reading data")
 		return nil, 0, CSSL_APP_ERR_RESOURCES
 	}
+
 	ret := C.SSL_read(cssl.ssl, unsafe.Pointer(buff), (C.int)(to_read))
 	if ret <= 0 {
 		err := C.SSL_get_error(cssl.ssl, ret)
@@ -549,10 +552,10 @@ func CSSLReadN(cssl *CSSL, to_read uint) ([]byte, uint, uint8) {
 		return nil, 0, retval
 	}
 
-	/* we have a buffer read.. lets convert it to a []byte */
+	// we have a buffer read.. lets convert it to a []byte 
 	readbuff := C.GoBytes(unsafe.Pointer(buff), ret)
 	if readbuff == nil {
-		fmt.Printf("\nCould not allocate []byte for read buffer")
+		glog.Errorf("Could not allocate []byte for read buffer")
 		return nil, 0, CSSL_APP_ERR_RESOURCES
 	}
 
@@ -560,7 +563,7 @@ func CSSLReadN(cssl *CSSL, to_read uint) ([]byte, uint, uint8) {
 	return readbuff, uint(ret), CSSL_APP_ERR_EOK
 }
 
-/* SSL Write */
+// SSL Write 
 func CSSLWrite(cssl *CSSL, obuff []byte, size uint) uint8 {
 
 	if (cssl == nil) || (cssl.ssl_up != true) || (obuff == nil) {
@@ -571,7 +574,7 @@ func CSSLWrite(cssl *CSSL, obuff []byte, size uint) uint8 {
 
 	wr_buff := C.CBytes(obuff)
 	if wr_buff == nil {
-		fmt.Printf("\nCould not allocate bytes for writing to SSL")
+		glog.Errorf("Could not allocate bytes for writing to SSL")
 		return CSSL_APP_ERR_RESOURCES
 	}
 
@@ -609,76 +612,83 @@ func cssl_go_psk_server_cb(ssl *C.struct_ssl_st, identity *C.char, psk *C.uchar,
 	id := C.GoString(identity)
 	cid := C.CString(id)
 	if cid == nil {
-		fmt.Printf("\nCould not store ID")
+		glog.Errorf("Could not store ID")
 	}
 	C.SSL_set_ex_data(ssl, 110, unsafe.Pointer(cid))
 
 	if cssl_psk_cb == nil {
-		fmt.Printf("\n No PSK lookup method specified")
+		glog.Errorf("No PSK lookup method specified")
 	}
 	if CSSLIsAdmin(ssl) {
 		if cssl_psk_admin_cb != nil {
 			psk_key = cssl_psk_admin_cb(id)
 		} else {
-			fmt.Printf("\nAdmin Key requested, but handler not set")
+			glog.Errorf("Admin Key requested, but handler not set")
 			return 0
 		}
 	} else {
 		if cssl_psk_cb != nil {
 			psk_key = cssl_psk_cb(id)
 		} else {
-			fmt.Printf("\nPSK Key requested, but handler not set")
+			glog.Errorf("PSK Key requested, but handler not set")
 			return 0
 		}
 	}
+
 	if psk_key == "" {
-		fmt.Printf("\nNo PSK key found for ID %s", id)
+		glog.Errorf("No PSK key found for ID %s", id)
 		return 0
 	}
 	if len(psk_key) > max_len {
-		fmt.Printf("\nPSK Key is too long")
+		glog.Errorf("PSK Key is too long")
 		return 0
 	}
 
 	ckey := C.CString(psk_key)
 	C.memcpy(unsafe.Pointer(psk), unsafe.Pointer(ckey), C.strlen(ckey))
 	C.free(unsafe.Pointer(ckey))
+
 	return len(psk_key)
 }
 
 //export cssl_go_psk_client_cb
 func cssl_go_psk_client_cb(ssl *C.struct_ssl_st, hint *C.char, id *C.char, max_id_len int, psk *C.char, max_psk int) int {
+
 	pskid := C.SSL_get_ex_data(ssl, 100)
 	idlen := C.strlen((*C.char)(pskid))
 	if int(idlen) > max_id_len {
-		fmt.Printf("\nID is too long")
+		glog.Errorf("ID is too long")
 		return 0
 	}
+
 	C.memcpy(unsafe.Pointer(id), unsafe.Pointer(pskid), idlen)
 	ids := C.GoString((*C.char)(pskid))
 	if cssl_psk_cb == nil {
-		fmt.Printf("\nNo PSK lookup method specified")
+		glog.Errorf("No PSK lookup method specified")
 		return 0
 	}
+
 	psk_key := cssl_psk_cb(ids)
 	if len(psk_key) > max_psk {
-		fmt.Printf("\nPSK Key is too long")
+		glog.Errorf("PSK Key is too long")
 		return 0
 	}
+
 	ckey := C.CString(psk_key)
 	C.memcpy(unsafe.Pointer(psk), unsafe.Pointer(ckey), C.strlen(ckey))
 	C.free(unsafe.Pointer(ckey))
+
 	return len(psk_key)
 }
 
 //export cssl_go_msg_cb
 func cssl_go_msg_cb(buff *C.char) {
-	fmt.Printf("\n%s", buff)
+	glog.Infof("\n%s", buff)
 }
 
 //export cssl_go_info_cb
 func cssl_go_info_cb(buff *C.char) {
-	fmt.Printf("\n%s", buff)
+	glog.Infof("\n%s", buff)
 }
 
 //export cssl_go_getdebugflag
@@ -689,22 +699,23 @@ func cssl_go_getdebugflag() int {
 	return 0
 }
 
-/* Set the CA Trust store file */
+// Set the CA Trust store file 
 func CSSLSetTrustStoreFile(cssl *CSSL, certstore string) bool {
 	if cssl == nil {
 		return false
 	}
+
 	ccerts := C.CString(certstore)
 	ret := C.SSL_CTX_load_verify_locations(cssl.ssl_ctx, ccerts, nil)
 	C.free(unsafe.Pointer(ccerts))
 	if int(ret) <= 0 {
-		fmt.Printf("\nCould not load TrustStore File")
+		glog.Errorf("Could not load TrustStore File")
 		return false
 	}
 	return true
 }
 
-/* Set the Private key and Certificate from file */
+// Set the Private key and Certificate from file 
 func CSSLSetPKIInfoFile(cssl *CSSL, keypath, certpath string) bool {
 	if cssl == nil {
 		return false
@@ -719,28 +730,30 @@ func CSSLSetPKIInfoFile(cssl *CSSL, keypath, certpath string) bool {
 	C.free(unsafe.Pointer(ckeyp))
 
 	if int(ret1) <= 0 {
-		fmt.Printf("\nFailed to load certificate from file.")
+		glog.Errorf("Failed to load certificate from file.")
 		return false
 	}
 	if int(ret2) <= 0 {
-		fmt.Printf("\nFailed to load private key from file.")
+		glog.Errorf("Failed to load private key from file.")
 		return false
 	}
 
 	return true
 }
 
-/* Set Private Key */
+// Set Private Key 
 func CSSLSetPrivatekey(cssl *CSSL, key *C.struct_evp_pkey_st) bool {
 	if cssl == nil || key == nil {
 		return false
 	}
+
 	ret := C.SSL_CTX_use_PrivateKey(cssl.ssl_ctx, key)
 	if int(ret) != 1 {
-		fmt.Printf("\nCould not set PrivateKey")
+		glog.Errorf("Could not set PrivateKey")
 		return false
 	}
+
 	return true
 }
 
-/* Set Private key ASN1 */
+// Set Private key ASN1 

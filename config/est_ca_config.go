@@ -110,7 +110,7 @@ import (
 	"strings"
 )
 
-/* Enum Definitions */
+// Enum Definitions 
 const (
 	CEST_ENCRYPTION_INVALID = iota
 	CEST_ENCRYPTION_AES128
@@ -210,7 +210,7 @@ const (
 	CEST_VALIDITY_UNIT_YEARS = "year"
 )
 
-/* Taken from the x509 package in go lang */
+// Taken from the x509 package in go lang 
 const (
 	CEST_SIGNATURE_INVALID      = iota
 	CEST_SIGNATURE_ECDSA_SHA1   = 9
@@ -226,7 +226,7 @@ const (
 	CEST_STR_SIGNATURE_ECDSA_SHA512 = "ecdsa-with-sha512"
 )
 
-/* Defaults for the configuration */
+// Defaults for the configuration 
 const CEST_ENCRYPTION_DEFAULT = CEST_ENCRYPTION_AES128
 const CEST_ENCRYPTION_MODE_DEFAULT = CEST_MODE_CBC
 const CEST_HASH_DEFAULT = CEST_HASH_SHA256
@@ -239,8 +239,8 @@ const CEST_CA_MODE_DEFAULT = CEST_CA_MODE_ROOT
 const CEST_SIGNATURE_DEFAULT = CEST_SIGNATURE_ECDSA_SHA512
 
 const CEST_KEYLENGTH_DEFAULT = 512
-const CEST_CA_VALIDITY_DEFAULT = 43830    /* In hours */
-const CEST_CLIENT_VALIDITY_DEFAULT = 8766 /* In hours */
+const CEST_CA_VALIDITY_DEFAULT = 43830    // In hours 
+const CEST_CLIENT_VALIDITY_DEFAULT = 8766 // In hours 
 const CEST_CRLSIZE_DEFAULT = 512000
 
 type KeyInfo struct {
@@ -371,55 +371,55 @@ type CESTConfig struct {
 	calist     CAList
 }
 
-/* Global Config Structure */
+// Global Config Structure 
 var cest_global_config CESTConfig
 
-/*
- * Interfaces for Config manipulation
- */
+// Interfaces for Config manipulation
 
-/* Returns the Global Config Block */
+// Returns the Global Config Block 
 func GetGlobalConfig() *CESTConfig {
 	return (&cest_global_config)
 }
 
-/* Set the defaults in a config structure */
+// Set the defaults in a config structure 
 func SetConfigDefaults(conf *CESTConfig) {
 	if conf == nil {
 		return
 	}
 
-	/* Set CRL SIZE */
+	// Set CRL SIZE 
 	conf.crlsize = CEST_CRLSIZE_DEFAULT
-	/* Set Crypto Parameters */
+
+	// Set Crypto Parameters 
 	conf.crypto.Encryption = CEST_ENCRYPTION_DEFAULT
 	conf.crypto.Mode = CEST_ENCRYPTION_MODE_DEFAULT
 	conf.crypto.Hash = CEST_HASH_DEFAULT
 	conf.crypto.Engine = CEST_ENGINE_DEFAULT
-	/* Set DB defaults */
+
+	// Set DB defaults 
 	conf.db.Dbtype = CEST_DBTYPE_DEFAULT
 	conf.db.Dbfile = CEST_DBFILE_DEFAULT
 }
 
-/* Initializes the global config to defaults */
+// Initializes the global config to defaults 
 func InitGlobalConfig() {
 
 	SetConfigDefaults(GetGlobalConfig())
 
 }
 
-/* Set Debug mode */
+// Set Debug mode 
 func SetDebug(sense bool) {
 
 	GetGlobalConfig().debug = sense
 }
 
-/* Set the CRL size */
+// Set the CRL size 
 func SetCRLSize(s uint32) {
 	GetGlobalConfig().crlsize = s
 }
 
-/* Get Crypto Encryption type from String */
+// Get Crypto Encryption type from String 
 func GetCryptoEncryptionType(t string) uint8 {
 	switch strings.ToLower(t) {
 	case CEST_STR_ENCRYPTION_AES128:
@@ -431,7 +431,7 @@ func GetCryptoEncryptionType(t string) uint8 {
 	}
 }
 
-/* Get Encryption Mode type */
+// Get Encryption Mode type 
 func GetCryptoEncryptionModeType(t string) uint8 {
 	switch strings.ToLower(t) {
 	case CEST_STR_ENC_MODE_CBC:
@@ -443,7 +443,7 @@ func GetCryptoEncryptionModeType(t string) uint8 {
 	}
 }
 
-/* Get Hash type */
+// Get Hash type 
 func GetCryptoHashType(t string) uint8 {
 	switch strings.ToLower(t) {
 	case CEST_STR_HASH_SHA1:
@@ -459,7 +459,7 @@ func GetCryptoHashType(t string) uint8 {
 	}
 }
 
-/* Get Auth method type */
+// Get Auth method type 
 func GetESTAuthMethod(t string) uint8 {
 	switch strings.ToLower(t) {
 	case CEST_STR_AUTH_TLSPSK:
@@ -473,7 +473,7 @@ func GetESTAuthMethod(t string) uint8 {
 	}
 }
 
-/* Get the DB type from string */
+// Get the DB type from string 
 func GetDBType(t string) uint8 {
 	switch strings.ToLower(t) {
 	case CEST_STR_DBTYPE_SQLLITE:
@@ -485,7 +485,7 @@ func GetDBType(t string) uint8 {
 	}
 }
 
-/* Set Crypto Encryption */
+// Set Crypto Encryption 
 func SetCryptoEncryption(enc string) bool {
 	var x uint8
 
@@ -498,7 +498,7 @@ func SetCryptoEncryption(enc string) bool {
 	return false
 }
 
-/* Set Crypto Hash */
+// Set Crypto Hash 
 func SetCryptoEncryptMode(enc string) bool {
 	var x uint8
 
@@ -511,7 +511,7 @@ func SetCryptoEncryptMode(enc string) bool {
 	return false
 }
 
-/* Set the crypto hash */
+// Set the crypto hash 
 func SetCryptoHash(hash string) bool {
 	var x uint8
 
@@ -524,7 +524,7 @@ func SetCryptoHash(hash string) bool {
 	return false
 }
 
-/* Set Admin Interface */
+// Set Admin Interface 
 func SetAdminInterface(ip string, port uint16) bool {
 	conf := GetGlobalConfig()
 	conf.admin.Addr.Ip = ip
@@ -533,7 +533,7 @@ func SetAdminInterface(ip string, port uint16) bool {
 	return true
 }
 
-/* Set EST Interface */
+// Set EST Interface 
 func SetESTAddr(ip string, port uint16) bool {
 	conf := GetGlobalConfig()
 	conf.est.Addr.Ip = ip
@@ -542,7 +542,7 @@ func SetESTAddr(ip string, port uint16) bool {
 	return true
 }
 
-/* Set EST Auth Method */
+// Set EST Auth Method 
 func SetESTAuthMethod(auth string) bool {
 	var x uint8
 
@@ -555,7 +555,7 @@ func SetESTAuthMethod(auth string) bool {
 	return false
 }
 
-/* Set EST TLS params */
+// Set EST TLS params 
 func SetESTTLSInfo(id, key, tstore string) bool {
 	conf := GetGlobalConfig()
 	conf.est.Tls.Enabled = true
@@ -566,7 +566,7 @@ func SetESTTLSInfo(id, key, tstore string) bool {
 	return true
 }
 
-/* Set LDAP URL info */
+// Set LDAP URL info 
 func SetLDAPURL(url string) bool {
 	conf := GetGlobalConfig()
 	conf.ldap.Enabled = true
@@ -575,7 +575,7 @@ func SetLDAPURL(url string) bool {
 	return true
 }
 
-/* Set LDAP IP/Port */
+// Set LDAP IP/Port 
 func SetLDAPAddr(ip string, port uint16) bool {
 	conf := GetGlobalConfig()
 	conf.ldap.Enabled = true
@@ -585,7 +585,7 @@ func SetLDAPAddr(ip string, port uint16) bool {
 	return true
 }
 
-/* Set LDAP TLS info */
+// Set LDAP TLS info 
 func SetLDAPTLSInfo(id, key, tstore string) bool {
 	conf := GetGlobalConfig()
 	conf.ldap.Tls.Enabled = true
@@ -596,7 +596,7 @@ func SetLDAPTLSInfo(id, key, tstore string) bool {
 	return true
 }
 
-/* Set DB type */
+// Set DB type 
 func SetDBType(t string) bool {
 	var x uint8
 
@@ -609,14 +609,14 @@ func SetDBType(t string) bool {
 	return false
 }
 
-/* Set DB Filename */
+// Set DB Filename 
 func SetDBFile(file string) bool {
 	GetGlobalConfig().db.Dbfile = file
 
 	return true
 }
 
-/* Set DB credentials */
+// Set DB credentials 
 func SetDBCredentials(uname string, pass string) bool {
 	conf := GetGlobalConfig()
 	conf.db.Uname = uname
@@ -625,7 +625,7 @@ func SetDBCredentials(uname string, pass string) bool {
 	return true
 }
 
-/* Set DB IP/Port */
+// Set DB IP/Port 
 func SetDBIP(ip string, port uint16) bool {
 	conf := GetGlobalConfig()
 	conf.db.Addr.Ip = ip
@@ -634,14 +634,14 @@ func SetDBIP(ip string, port uint16) bool {
 	return true
 }
 
-/* Set DB URL */
+// Set DB URL 
 func SetDBURL(url string) bool {
 	GetGlobalConfig().db.Addr.Url = url
 
 	return true
 }
 
-/* Set DB TLS Info */
+// Set DB TLS Info 
 func SetDBTLSInfo(id, key, tstore string) bool {
 	conf := GetGlobalConfig()
 	conf.db.Tls.Enabled = true
@@ -652,33 +652,33 @@ func SetDBTLSInfo(id, key, tstore string) bool {
 	return true
 }
 
-/* Set Default CA Profile if configured */
+// Set Default CA Profile if configured 
 func SetDefaultCAProfile(name string) bool {
-	/* Add validation for default later */
+	// Add validation for default later 
 	GetGlobalConfig().caprofiles.Default_prof = name
 
 	return true
 }
 
-/* Get Default CA Profile Name */
+// Get Default CA Profile Name 
 func GetDefaultCAProfile() string {
 	return GetGlobalConfig().caprofiles.Default_prof
 }
 
-/* Set Default CA if configured */
+// Set Default CA if configured 
 func SetDefaultCA(name string) bool {
-	/* Add validation for default later */
+	// Add validation for default later 
 	GetGlobalConfig().calist.Defaultca = name
 
 	return true
 }
 
-/* Get Default CA */
+// Get Default CA 
 func GetDefaultCA() string {
 	return GetGlobalConfig().calist.Defaultca
 }
 
-/* Find CA Profile by name */
+// Find CA Profile by name 
 func FindCAProfileByName(name string) *CAProfile {
 	var i uint32
 	var prof *CAProfile
@@ -695,7 +695,7 @@ func FindCAProfileByName(name string) *CAProfile {
 	return nil
 }
 
-/* Find CA by name */
+// Find CA by name 
 func FindCAByName(name string) *CA {
 	var i uint32
 	var ca *CA
@@ -712,13 +712,13 @@ func FindCAByName(name string) *CA {
 	return nil
 }
 
-/* Create new ca profile object by name */
+// Create new ca profile object by name 
 func CreateCAProfile(name string) *CAProfile {
 
 	var caprof *CAProfile
 	conf := GetGlobalConfig()
 
-	/* Does it exist? */
+	// Does it exist? 
 	caprof = FindCAProfileByName(name)
 	if caprof != nil {
 		return caprof
@@ -736,13 +736,13 @@ func CreateCAProfile(name string) *CAProfile {
 
 	conf.caprofiles.count++
 
-	/* Set Defaults */
+	// Set Defaults 
 	caprof.Validity = CEST_CLIENT_VALIDITY_DEFAULT
 
 	return caprof
 }
 
-/* GetCANameList */
+// GetCANameList 
 func GetCANameList() []string {
 	var ca *CA
 	var i uint32
@@ -760,13 +760,13 @@ func GetCANameList() []string {
 	return list
 }
 
-/* Create new ca object by name */
+// Create new ca object by name 
 func CreateCA(name string) *CA {
 
 	var ca *CA
 	conf := GetGlobalConfig()
 
-	/* Does it exist? */
+	// Does it exist? 
 	ca = FindCAByName(name)
 	if ca != nil {
 		return ca
@@ -784,7 +784,7 @@ func CreateCA(name string) *CA {
 
 	conf.calist.count++
 
-	/* Set defaults for the ca */
+	// Set defaults for the ca 
 	ca.Mode = CEST_CA_MODE_DEFAULT
 	ca.Validity = CEST_CA_VALIDITY_DEFAULT
 	ca.Signature = CEST_SIGNATURE_DEFAULT
@@ -795,7 +795,7 @@ func CreateCA(name string) *CA {
 	return ca
 }
 
-/* Set Profile Subjectname */
+// Set Profile Subjectname 
 func SetProfileSubjectName(prof *CAProfile, cn, o, c, ou string) bool {
 	if prof == nil {
 		return false
@@ -809,7 +809,7 @@ func SetProfileSubjectName(prof *CAProfile, cn, o, c, ou string) bool {
 	return true
 }
 
-/* Set Profile Sub Alt name */
+// Set Profile Sub Alt name 
 func SetProfileSubjectAltName(prof *CAProfile, ip, host string) bool {
 	if prof == nil {
 		return false
@@ -821,7 +821,7 @@ func SetProfileSubjectAltName(prof *CAProfile, ip, host string) bool {
 	return true
 }
 
-/* Set profile basic Attributes */
+// Set profile basic Attributes 
 func SetProfileBasicAttr(prof *CAProfile, isca bool, maxpath uint8) bool {
 	if prof == nil {
 		return false
@@ -833,7 +833,7 @@ func SetProfileBasicAttr(prof *CAProfile, isca bool, maxpath uint8) bool {
 	return true
 }
 
-/* find validity in hours given units and number */
+// find validity in hours given units and number 
 func GetValidityInHours(val uint64, unit string) uint64 {
 	var factor uint64
 	switch strings.ToLower(unit) {
@@ -850,7 +850,7 @@ func GetValidityInHours(val uint64, unit string) uint64 {
 	return (val * factor)
 }
 
-/* Set validity for profile */
+// Set validity for profile 
 func SetProfileValidity(prof *CAProfile, val uint64, unit string) bool {
 	var valhours uint64
 
@@ -868,12 +868,12 @@ func SetProfileValidity(prof *CAProfile, val uint64, unit string) bool {
 	return true
 }
 
-/* Delete CA Profile */
+// Delete CA Profile 
 func DeleteCAProfilebyName(name string) {
 	var caprof *CAProfile
 	conf := GetGlobalConfig()
 
-	/* Does it exist? */
+	// Does it exist? 
 	caprof = FindCAProfileByName(name)
 	if caprof == nil {
 		return
@@ -883,12 +883,12 @@ func DeleteCAProfilebyName(name string) {
 	conf.caprofiles.count--
 }
 
-/* Delete CA Config */
+// Delete CA Config 
 func DeleteCAbyName(name string) {
 	var ca *CA
 	conf := GetGlobalConfig()
 
-	/* Does it exist? */
+	// Does it exist? 
 	ca = FindCAByName(name)
 	if ca == nil {
 		return
@@ -898,7 +898,7 @@ func DeleteCAbyName(name string) {
 	conf.calist.count--
 }
 
-/* Get CA mode type */
+// Get CA mode type 
 func GetCAModeType(s string) uint8 {
 	switch strings.ToLower(s) {
 	case CEST_STR_CA_MODE_ROOT:
@@ -910,7 +910,7 @@ func GetCAModeType(s string) uint8 {
 	}
 }
 
-/* Set the CA mode */
+// Set the CA mode 
 func SetCAMode(ca *CA, camode string) bool {
 	var mode uint8
 
@@ -927,7 +927,7 @@ func SetCAMode(ca *CA, camode string) bool {
 	return false
 }
 
-/* Set the CA cert paths */
+// Set the CA cert paths 
 func SetCACertPath(ca *CA, cpath, kpath, chainpath string) bool {
 	if ca == nil {
 		return false
@@ -940,7 +940,7 @@ func SetCACertPath(ca *CA, cpath, kpath, chainpath string) bool {
 	return true
 }
 
-/* Set CA CRL path */
+// Set CA CRL path 
 func SetCACRLPath(ca *CA, crlpath string) bool {
 	if ca == nil {
 		return false
@@ -951,7 +951,7 @@ func SetCACRLPath(ca *CA, crlpath string) bool {
 	return true
 }
 
-/* Set CA validity */
+// Set CA validity 
 func SetCAValidity(ca *CA, val uint64, unit string) bool {
 	var valhours uint64
 
@@ -969,7 +969,7 @@ func SetCAValidity(ca *CA, val uint64, unit string) bool {
 	return true
 }
 
-/* Set CA Subjectname */
+// Set CA Subjectname 
 func SetCASubjectName(ca *CA, cn, o, c, ou string) bool {
 	if ca == nil {
 		return false
@@ -983,7 +983,7 @@ func SetCASubjectName(ca *CA, cn, o, c, ou string) bool {
 	return true
 }
 
-/* Set CA Sub Alt name */
+// Set CA Sub Alt name 
 func SetCASubjectAltName(ca *CA, ip, host string) bool {
 	if ca == nil {
 		return false
@@ -995,7 +995,7 @@ func SetCASubjectAltName(ca *CA, ip, host string) bool {
 	return true
 }
 
-/* Set CA basic Attributes */
+// Set CA basic Attributes 
 func SetCABasicAttr(ca *CA, maxpath uint8) bool {
 	if ca == nil {
 		return false
@@ -1006,7 +1006,7 @@ func SetCABasicAttr(ca *CA, maxpath uint8) bool {
 	return true
 }
 
-/* Function to get keytype enum */
+// Function to get keytype enum 
 func GetKeyType(t string) uint8 {
 	var x uint8
 	switch strings.ToLower(t) {
@@ -1020,7 +1020,7 @@ func GetKeyType(t string) uint8 {
 	return x
 }
 
-/* Function to get the Signature Algo */
+// Function to get the Signature Algo 
 func GetSignatureType(t string) uint8 {
 	var x uint8
 	switch strings.ToLower(t) {
@@ -1039,7 +1039,7 @@ func GetSignatureType(t string) uint8 {
 	return x
 }
 
-/* Set CA Key Info */
+// Set CA Key Info 
 func SetCAKeyInfo(ca *CA, ktype string, klen uint16) bool {
 	var x uint8
 
@@ -1057,7 +1057,7 @@ func SetCAKeyInfo(ca *CA, ktype string, klen uint16) bool {
 	return false
 }
 
-/* Set CA Signature Algorithm */
+// Set CA Signature Algorithm 
 func SetCASignatureAlgoritm(ca *CA, algo string) bool {
 	var x uint8
 
@@ -1074,7 +1074,7 @@ func SetCASignatureAlgoritm(ca *CA, algo string) bool {
 	return false
 }
 
-/* Set Parent CA IP/Port */
+// Set Parent CA IP/Port 
 func SetParentCAIP(ca *CA, ip string, port uint16) bool {
 	if ca == nil {
 		return false
@@ -1086,7 +1086,7 @@ func SetParentCAIP(ca *CA, ip string, port uint16) bool {
 	return true
 }
 
-/* Set Parent CA URL */
+// Set Parent CA URL 
 func SetParentCAURL(ca *CA, url string) bool {
 	if ca == nil {
 		return false
@@ -1097,7 +1097,7 @@ func SetParentCAURL(ca *CA, url string) bool {
 	return true
 }
 
-/* Set Parent CA auth mode */
+// Set Parent CA auth mode 
 func SetParentCAAuthMode(ca *CA, mode string) bool {
 	var x uint8
 
@@ -1113,7 +1113,7 @@ func SetParentCAAuthMode(ca *CA, mode string) bool {
 	return false
 }
 
-/* Set Parent CA EST Params */
+// Set Parent CA EST Params 
 func SetEnrollParameter(ca *CA, fingerprint, uname, passwd string) bool {
 	if ca == nil {
 		return false
@@ -1126,7 +1126,7 @@ func SetEnrollParameter(ca *CA, fingerprint, uname, passwd string) bool {
 	return true
 }
 
-/* Set Parent CA TLS info */
+// Set Parent CA TLS info 
 func SetCATLSInfo(ca *CA, id, key, tstore string) bool {
 	if ca == nil {
 		return false
@@ -1139,42 +1139,42 @@ func SetCATLSInfo(ca *CA, id, key, tstore string) bool {
 	return true
 }
 
-/* Debug Enabled ? */
+// Debug Enabled ? 
 func GetDebugFlag() bool {
 	return GetGlobalConfig().debug
 }
 
-/* Get Crypto Params */
+// Get Crypto Params 
 func GetCryptoParams() *Crypto {
 	return &(GetGlobalConfig().crypto)
 }
 
-/* Get CRLSize */
+// Get CRLSize 
 func GetCRLSize() uint32 {
 	return GetGlobalConfig().crlsize
 }
 
-/* Get Admin Interface */
+// Get Admin Interface 
 func GetAdminInterface() *AdminInterface {
 	return &(GetGlobalConfig().admin)
 }
 
-/* Get EST Interface */
+// Get EST Interface 
 func GetESTInterface() *ESTInterface {
 	return &(GetGlobalConfig().est)
 }
 
-/* Get DB */
+// Get DB 
 func GetDBInfo() *DBInfo {
 	return &(GetGlobalConfig().db)
 }
 
-/* Get LDAP Info */
+// Get LDAP Info 
 func GetLDAPInfo() *LDAPInfo {
 	return &(GetGlobalConfig().ldap)
 }
 
-/* Function to Print Config (rewrite later) */
+// Function to Print Config (rewrite later) 
 func PrintConfigInfo() {
 	var i uint32
 
